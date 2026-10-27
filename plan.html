@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SU Planner – 4-year plan</title>
+  <meta name="description" content="Plan all eight semesters of your Sabancı University degree against your program's requirements.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/plan.css">
+</head>
+<body class="plan-page">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="M4 20L14.5 9.5M13 5V2M17.5 6.5l2-2M19 11h3M8.5 6.5l-2-2"/><path d="M13 8l3 3"/></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 9.5L12 5l10 4.5L12 14z"/><path d="M6 11.5V16c3.5 2.5 8.5 2.5 12 0v-4.5M22 9.5v5"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <button id="menu-toggle" class="icon-btn" type="button" aria-label="Show or hide the course list" aria-controls="sidebar">
+      <svg class="i"><use href="#i-menu"/></svg>
+    </button>
+    <h1 class="brand">SU Planner</h1>
+    <nav class="page-tabs" aria-label="Pages">
+      <a href="index.html"><span class="long">Weekly schedule</span><span class="short">Week</span></a>
+      <a href="plan.html" aria-current="page"><span class="long">4-year plan</span><span class="short">Plan</span></a>
+      <a href="prereq.html"><span class="long">Prerequisites</span><span class="short">Prereqs</span></a>
+    </nav>
+    <div class="actions">
+      <button id="suggest-btn" class="action" type="button" title="Fill the plan with a suggested one for your program"><svg class="i"><use href="#i-wand"/></svg><span class="label">Suggest plan</span></button>
+      <button id="print-btn" class="action" type="button"><svg class="i"><use href="#i-print"/></svg><span class="label">Print</span></button>
+      <button id="clear-btn" class="action" type="button"><svg class="i"><use href="#i-trash"/></svg><span class="label">Clear plan</span></button>
+    </div>
+  </header>
+
+  <aside id="sidebar" aria-label="Courses">
+    <label class="program-row" title="Your program's requirements drive the plan">
+      <svg class="i"><use href="#i-cap"/></svg>
+      <select id="program" class="program-select" aria-label="Your program"></select>
+    </label>
+    <label id="entry-row" class="entry-row" title="Your degree requirements depend on the year you started">
+      <span>Year you started</span>
+      <select id="entry" class="entry-select" aria-label="Year you started"></select>
+    </label>
+    <div id="extras" class="extras-box" hidden></div>
+    <div class="search-row">
+      <input id="search" type="search" placeholder="Search course code or name" autocomplete="off" spellcheck="false" aria-label="Search courses">
+    </div>
+    <div id="target-note" class="target-note"></div>
+    <div id="list-meta" class="list-meta"></div>
+    <div id="catalog" class="course-list" aria-label="Course catalog"></div>
+    <p id="list-empty" class="list-empty" hidden>No courses match.</p>
+  </aside>
+
+  <main id="main">
+    <section id="progress" class="progress" aria-label="Progress toward your degree"></section>
+    <section id="semesters" class="semesters" aria-label="Your eight semesters"></section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="suggest-dialog">
+    <form method="dialog" class="dlg">
+      <h2>Use the suggested plan?</h2>
+      <p id="suggest-text"></p>
+      <div class="dlg-actions">
+        <button class="btn" value="cancel">Keep my plan</button>
+        <button class="btn primary" value="suggest">Use suggested plan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="clear-dialog">
+    <form method="dialog" class="dlg">
+      <h2>Clear your 4-year plan?</h2>
+      <p>This removes every course from all eight semesters.</p>
+      <div class="dlg-actions">
+        <button class="btn" value="cancel">Keep it</button>
+        <button class="btn danger" value="clear">Clear</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="data/courses.js"></script>
+  <script src="data/requirements.js"></script>
+  <script src="js/programs.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/plan.js"></script>
+</body>
+</html>

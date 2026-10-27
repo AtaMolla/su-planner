@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SU Planner – Prerequisites</title>
+  <meta name="description" content="See which Sabancı University courses open which: prerequisite chains for your program's required, core and area courses.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/prereq.css">
+</head>
+<body class="prereq-page">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 9.5L12 5l10 4.5L12 14z"/><path d="M6 11.5V16c3.5 2.5 8.5 2.5 12 0v-4.5M22 9.5v5"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <button id="menu-toggle" class="icon-btn" type="button" aria-label="Show or hide the side panel" aria-controls="sidebar">
+      <svg class="i"><use href="#i-menu"/></svg>
+    </button>
+    <h1 class="brand">SU Planner</h1>
+    <nav class="page-tabs" aria-label="Pages">
+      <a href="index.html"><span class="long">Weekly schedule</span><span class="short">Week</span></a>
+      <a href="plan.html"><span class="long">4-year plan</span><span class="short">Plan</span></a>
+      <a href="prereq.html" aria-current="page"><span class="long">Prerequisites</span><span class="short">Prereqs</span></a>
+    </nav>
+  </header>
+
+  <aside id="sidebar" aria-label="Chart options">
+    <label class="program-row" title="Your program's required, core and area courses are charted">
+      <svg class="i"><use href="#i-cap"/></svg>
+      <select id="program" class="program-select" aria-label="Your program"></select>
+    </label>
+    <label id="entry-row" class="entry-row" title="Your degree requirements depend on the year you started">
+      <span>Year you started</span>
+      <select id="entry" class="entry-select" aria-label="Year you started"></select>
+    </label>
+    <div id="extras" class="extras-box" hidden></div>
+    <label id="chart-row" class="entry-row" hidden title="Chart your major, double major or a minor">
+      <span>Chart</span>
+      <select id="chart-for" class="entry-select" aria-label="Which program to chart"></select>
+    </label>
+    <div class="search-row">
+      <input id="search" type="search" placeholder="Find a course in the chart" autocomplete="off" spellcheck="false" aria-label="Find a course">
+    </div>
+
+    <div class="side-scroll">
+      <div class="side-block">
+        <div class="side-label">Show</div>
+        <div id="kind-chips" class="kind-chips" role="group" aria-label="Course groups to show">
+          <button type="button" data-kind="required" aria-pressed="true"><span class="sw k-required"></span>Required</button>
+          <button type="button" data-kind="core" aria-pressed="true"><span class="sw k-core"></span>Core</button>
+          <button type="button" data-kind="area" aria-pressed="true"><span class="sw k-area"></span>Area</button>
+        </div>
+        <label class="check-row"><input id="show-outside" type="checkbox" checked> Prerequisites from other groups</label>
+      </div>
+
+      <div id="details" class="details" aria-live="polite"></div>
+
+      <div class="side-block legend">
+        <div class="side-label">How to read it</div>
+        <p><svg width="36" height="10" aria-hidden="true"><path d="M2 5H34" class="lg-edge"/></svg> needed before the next course</p>
+        <p><svg width="36" height="10" aria-hidden="true"><path d="M2 5H34" class="lg-edge alt"/></svg> one of several options</p>
+        <p><span class="sw k-outside"></span> from another group (university, free…)</p>
+        <p>Columns are steps: a course can be taken once everything to its left that points at it is done.</p>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="chart-wrap" class="chart-wrap">
+      <svg id="chart" role="img" aria-label="Prerequisite flowchart"></svg>
+    </div>
+    <section id="loose" class="loose" aria-label="Courses not linked to others"></section>
+  </main>
+
+  <script src="data/courses.js"></script>
+  <script src="data/requirements.js"></script>
+  <script src="js/programs.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/prereq.js"></script>
+</body>
+</html>
