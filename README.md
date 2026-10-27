@@ -19,9 +19,16 @@ your entry year (or the newest year they have, if they didn't exist yet).
 
 - Weekly schedule: courses that also count for your double major or a minor get a small tag
   ("Economics DM", "Finance minor").
-- 4-year plan: a progress section per double major / minor with its own groups, its total, and its
-  required courses not yet planned. A double major's total is **your major's total + 30 SU** (SU's rule;
-  it also needs a 3.20 GPA). Courses and the course list show the same tags. Adding or removing one
+- 4-year plan: a progress section per double major / minor with its own groups, its total, its
+  required courses not yet planned, and a link to its page on SU's site. SU's double major rule
+  ([sabanciuniv.edu/en/double-majors-details](https://sabanciuniv.edu/en/double-majors-details)): the
+  whole major, every course the double major requires, **at least 30 SU and 60 ECTS on top of the
+  major**, and a 3.20 GPA overall and in each program; courses in both programs count for both. So a
+  double major tracks its required, core and area groups, its university-course minimum (44 SU in
+  FASS/SBS programs, 41 in FENS), any Engineering / Basic Science ECTS minimum your major doesn't
+  already have, and the totals (major + 30 SU, major + 60 ECTS). A minor
+  ([minor-programs-details](https://sabanciuniv.edu/en/minor-programs-details)) needs its groups and a
+  2.72 GPA; some minors add rules (one course from each topic list…) that the planner doesn't check. Courses and the course list show the same tags. Adding or removing one
   offers to rebuild the suggested plan with it: its required courses join the prerequisite order, its
   electives become placeholders (a minor's replace your major's free electives, since they count there
   too), and a double major is topped up to its +30. Expect overloaded semesters with a double major;
@@ -51,6 +58,13 @@ your entry year (or the newest year they have, if they didn't exist yet).
 ### 4-year plan (`plan.html`)
 
 - Eight semesters (Fall and Spring of years 1–4), named from the year you started; the current term is marked.
+- Three **summers** (after years 1–3) below them, for summer internships: every x95 internship
+  (CS 395, IE 395…) and courses SU names "Summer Internship" (MGMT 300, PROJ 303). The suggested
+  plan puts x95 internships in the summer after Year 3 and other summer internships in the
+  earliest summer after their prerequisites; one left in a Fall/Spring semester is flagged.
+  Summers have no 15–20 credit rule and no timetable. PROJ courses are taken during the regular
+  semesters. SU's older curricula list a "PROJ 302"; that isn't a separate class, it is PROJ 201,
+  so the data uses PROJ 201 and saved plans with PROJ 302 are converted when they load.
 - **Suggested plan**: picking a program fills the plan automatically when it's empty (and on a first
   visit); if it already has courses it asks first. The **Suggest plan** button does the same any time.
   Year 1 gets the freshman university courses (codes ending in 1 in Fall, 2 in Spring). Years 2–4 get
@@ -77,6 +91,32 @@ your entry year (or the newest year they have, if they didn't exist yet).
 - In the current term's semester, courses that aren't offered this term are flagged.
 - **Print** prints just the plan; **Clear plan** empties it.
 
+### Semester times (`timetable.html`)
+
+- Every semester of your 4-year plan on a weekly timetable (Mon–Fri, 08:40–20:40).
+- Fall semesters use this Fall's times (`data/courses.js`); Spring semesters use the newest Spring
+  schedule SU has published (`data/schedule-202602.js`, Spring 2026-2027). If no Spring schedule is
+  loaded, Fall times stand in. Future years may differ a little.
+- **Alternative timetables**: it finds every clash-free choice of sections (lecture, recitation,
+  lab…) for the semester and says how many there are ("80 different timetables work"). **‹ ›** (or
+  the arrow keys) flip through them; **Keep this one** saves the shown one as your picks. Sections
+  that meet at the same hours count as one timetable ("A1/A2"). Large semesters list the first
+  2,000 ("2,000+"). The math model and the search are explained in
+  [`docs/schedule-model.md`](docs/schedule-model.md).
+- You can fix a section yourself in the side panel; the list then only holds timetables with it.
+  "Auto" (or **Clear my picks**) frees it again.
+- If no section choice avoids an overlap, it says which courses clash and when, so you can move one
+  to another semester. If only your hand-picked sections clash, it says so.
+- Flags courses that aren't on that season's schedule (e.g. Fall-only courses planned in Spring),
+  courses with no fixed time yet, and elective placeholders. **Copy CRNs** copies the semester's sections.
+- PROJ courses (PROJ 201…) run during the semester with meeting times arranged after
+  registration, so they're listed in the side panel ("times arranged after you register") but not
+  placed on the timetable or checked for clashes. A summer internship left in a Fall/Spring
+  semester gets one small line there too ("summer course: belongs in a summer").
+- The 4-year plan shows a **Time clash** badge on any semester with an unavoidable overlap (or a
+  **Times** link), warns about courses planned in a season they don't run, and the suggested plan
+  avoids both.
+
 ### Prerequisites (`prereq.html`)
 
 - A flowchart of the program's required, core and area courses: arrows go from a course to the
@@ -97,6 +137,16 @@ python tools/build_data.py path/or/url/to/data.json 202602
 
 Term codes: `YYYY01` Fall, `YYYY02` Spring, `YYYY03` Summer.
 
+## Update the Spring class schedule
+
+`data/schedule-<TERM>.js` comes from SU's public class search (`bwckschd.p_disp_dyn_sched`).
+When a newer Spring term is published, download it and point the pages at it
+(the `<script src="data/schedule-….js">` lines in `timetable.html` and `plan.html`):
+
+```
+python tools/build_schedule.py 202702
+```
+
 ## Update the degree requirements
 
 `data/requirements.js` is read from SU's public degree pages
@@ -110,13 +160,18 @@ takes about ten minutes):
 python tools/build_requirements.py 202601 7
 ```
 
-It keeps only facts: requirement categories and minimum credits, course lists (identical
+It maps codes that are really another course (`ALIASES`: PROJ 302 → PROJ 201) and keeps only
+facts: requirement categories and minimum credits, course lists (identical
 lists stored once), and for each course its name, SU and ECTS credits, Engineering and
 Basic Science ECTS, and prerequisites. Spring and Summer admits aren't read.
 
 ## Files
 
-- `index.html`, `plan.html`, `prereq.html`: the three pages
+- `index.html`, `plan.html`, `timetable.html`, `prereq.html`: the four pages
+- `js/times.js`: Fall/Spring class times, the search for every clash-free timetable, and the
+  least-overlap solver that explains clashes (used by the plan and times pages)
+- `docs/schedule-model.md`: the scheduling model (sets, variables, constraints) and the web algorithm
+- `data/schedule-202602.js`: Spring 2026-2027 sections (rebuild with `tools/build_schedule.py`)
 - `css/style.css`: shared styling (top bar, sidebar, dialogs) and the weekly page
 - `css/plan.css`, `css/prereq.css`: the plan and flowchart pages
 - `js/shared.js`: requirement helpers and the program/year pickers, used by all pages

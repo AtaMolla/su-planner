@@ -6,12 +6,18 @@
   'use strict';
 
   const S = window.SUShared;
+  const T = window.SUTimes || null; // class times and the clash solver (js/times.js)
   const { REQUIREMENTS, esc, fold, baseCode } = S;
   const CATALOG = REQUIREMENTS.catalog || {};
   const OFFER = window.COURSE_DATA || { courses: [] };
   const OFFERED = new Map(OFFER.courses.map((c) => [c.code, c.name]));
   const CURRENT_TERM = OFFER.term || '';
-  const SEMESTERS = 8;
+  const SEMESTERS = 8;        // Fall and Spring of years 1–4: plan entries 0–7
+  const SUMMERS = 3;          // summers after years 1–3: plan entries 8–10
+  const TERMS = SEMESTERS + SUMMERS;
+  const isSummer = (i) => i >= SEMESTERS;
+  // Order in time: the summer after Year k sits between that year's Spring and the next Fall.
+  const position = (i) => (isSummer(i) ? 2 * (i - SEMESTERS) + 1.5 : i);
   const KIND_LABEL = {
     required: 'Required', core: 'Core', area: 'Area', university: 'University',
     free: 'Free', faculty: 'Faculty', other: 'Other',
@@ -54,7 +60,7 @@
     program: '',
     entry: '',
     years: [],
-    plan: Array.from({ length: SEMESTERS }, () => []), // course codes per semester
+    plan: Array.from({ length: TERMS }, () => []), // course codes per semester, then per summer
     target: 0, // semester that "+" adds to
     query: '',
     onlyCat: '', // list only this group's courses (after "choose a course" on a placeholder)
@@ -66,19 +72,35 @@
   let extras = [];       // double major / minors picked (shared.js extraPrograms), each with .excl
   let extraTags = new Map(); // course code -> ["Economics DM", "Finance minor"]
 
-  // A double major's own groups to track (university and free credits are shared with the
-  // major, and its +30 SU shows in its total); a minor's are all of them.
+  // A double major's own groups to track. University courses are tracked too: the list is the
+  // same for every program, but the minimum isn't (41 SU in FENS, 44 SU in FASS and SBS).
+  // Its free electives and the +30 SU / +60 ECTS show in its totals. A minor's are all its groups.
   const extraGroups = (x) => x.cats.filter((c) => (x.kind === 'dm'
-    ? ['required', 'requirement', 'core', 'area'].includes(c.kind)
+    ? ['required', 'requirement', 'core', 'area', 'university'].includes(c.kind)
     : !['faculty', 'university', 'free'].includes(c.kind)));
 
-  // SU: a double major needs the whole major plus 30 SU credits on top of it.
+  // SU's double major rule: the whole major plus at least 30 SU and 60 ECTS credits on top of it.
   const DM_EXTRA_SU = 30;
+  const DM_EXTRA_ECTS = 60;
   function extraGoal(x) {
     if (x.kind !== 'dm') return x.totals.su || 0;
     const major = S.totalsFor(state.program, state.entry).su;
     return major ? major + DM_EXTRA_SU : (x.totals.su || 0);
   }
+  // Some SU pages leave out the ECTS total; the double major's own page (240 + 60) stands in.
+  function extraGoalEcts(x) {
+    const major = S.totalsFor(state.program, state.entry).ects;
+    return major ? major + DM_EXTRA_ECTS : (x.totals.ects || 0);
+  }
+  // Placeholders aren't a known course yet, so they don't count toward Faculty Courses or the
+  // Engineering / Basic Science ECTS until a real course replaces them.
+  function placeholderHint(names) {
+    if (!names.length || !state.plan.flat().some(isSlot)) return '';
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+    return `<p class="extra-note">Elective placeholders count toward ${esc(list)} only once you choose a course for them.</p>`;
+  }
+  // SU's own requirements page for a double major or minor.
+  const suPage = (x) => `https://suis.sabanciuniv.edu/prod/SU_DEGREE.p_degree_detail?P_TERM=${x.term}&P_PROGRAM=${encodeURIComponent(x.key)}&P_LANG=EN&P_LEVEL=UG&P_SUBMIT=Select`;
 
   function loadExtras() {
     extras = state.program ? S.extraPrograms(state.entry).map((x) => ({ ...x, excl: extraGroups(x) })) : [];
@@ -95,18 +117,24 @@
     try { saved = JSON.parse(localStorage.getItem(S.KEYS.plan) || 'null'); } catch { saved = null; }
     if (!Array.isArray(saved?.semesters)) return false;
     const seen = new Set();
-    state.plan = Array.from({ length: SEMESTERS }, (_, i) => (saved.semesters[i] || [])
-      .filter((c) => typeof c === 'string' && !seen.has(c) && seen.add(c)));
+    state.plan = Array.from({ length: TERMS }, (_, i) => (saved.semesters[i] || [])
+      .filter((c) => typeof c === 'string')
+      .map(S.canonicalCode) // e.g. an old "PROJ 302" becomes "PROJ 201"
+      .filter((c) => !seen.has(c) && seen.add(c)));
+    if (saved.semesters.flat().some((c) => typeof c === 'string' && S.canonicalCode(c) !== c)) savePlan();
     return true;
   }
 
   // ---------- Semesters ----------
+  // SU term code of a plan entry: Fall "YYYY01", Spring "YYYY02", Summer "YYYY03".
   function semesterTerm(i) {
-    const start = state.entry || CURRENT_TERM || '202601';
-    const year = Number(start.slice(0, 4)) + Math.floor(i / 2);
-    return `${year}${i % 2 ? '02' : '01'}`;
+    const start = Number((state.entry || CURRENT_TERM || '202601').slice(0, 4));
+    if (isSummer(i)) return `${start + (i - SEMESTERS)}03`;
+    return `${start + Math.floor(i / 2)}${i % 2 ? '02' : '01'}`;
   }
-  const semesterTitle = (i) => `Year ${Math.floor(i / 2) + 1} · ${i % 2 ? 'Spring' : 'Fall'}`;
+  const semesterTitle = (i) => (isSummer(i)
+    ? `Summer after Year ${i - SEMESTERS + 1}`
+    : `Year ${Math.floor(i / 2) + 1} · ${i % 2 ? 'Spring' : 'Fall'}`);
   function semesterStatus(i) {
     const term = semesterTerm(i);
     if (!CURRENT_TERM) return 'future';
@@ -136,8 +164,8 @@
     const missing = [];
     for (const group of prereqOf(code)) {
       const sems = group.map((p) => where.get(p)).filter((s) => s != null);
-      if (sems.some((s) => s < i)) continue;
-      if (sems.length) late.push({ group, at: Math.min(...sems) });
+      if (sems.some((s) => position(s) < position(i))) continue;
+      if (sems.length) late.push({ group, at: sems.reduce((a, b) => (position(b) < position(a) ? b : a)) });
       else missing.push(group);
     }
     return { late, missing };
@@ -194,11 +222,16 @@
         su += c.su; ects += c.ects; n++;
         split.eng += c.eng; split.basic += c.basic;
         // A placeholder counts in its own category; a course in the first one that lists it.
-        // For the major, a double major / minor placeholder counts as a free elective.
+        // Another program's placeholder counts in a category with the same course list (a HUM
+        // course counts for the major and the double major), and for the major also as a free elective.
         let member;
         if (isSlot(code)) {
           member = groups.filter((cat) => cat.id === slotCatId(code));
-          if (!member.length && forMajor) member = groups.filter((cat) => cat.kind === 'free');
+          if (!member.length) {
+            const own = catById(slotCatId(code));
+            member = own ? groups.filter((cat) => cat.pool === own.pool) : [];
+            if (forMajor) member = [...member, ...groups.filter((cat) => cat.kind === 'free')];
+          }
         } else {
           member = groups.filter((cat) => inCat(cat, code));
         }
@@ -234,7 +267,7 @@
   // courses after it in prerequisite order, and elective placeholders to reach each minimum,
   // keeping semesters at 15–20 SU credits where possible.
   function suggestPlan() {
-    const sems = Array.from({ length: SEMESTERS }, () => []);
+    const sems = Array.from({ length: TERMS }, () => []);
     const load = (s) => sems[s].reduce((t, code) => t + info(code).su, 0);
     const placed = new Map(); // base code -> semester
     const put = (code, s) => { sems[s].push(code); placed.set(baseCode(code), s); };
@@ -269,6 +302,9 @@
     requiredOf(exclusive);
     for (const code of uniPool) if (!queued(code) && !code.startsWith('HUM ')) queue.push(code);
     for (const x of extras) requiredOf(x.excl);
+    // Summer courses (internships, summer projects) don't go in Fall or Spring: take them out here.
+    const summerCourses = queue.filter((c) => S.isSummerCourse(c));
+    for (const c of summerCourses) queue.splice(queue.indexOf(c), 1);
 
     const inPlan = new Set([...placed.keys(), ...queue.map(baseCode)]);
     // Every prerequisite group needs one of its courses in an earlier semester; groups
@@ -296,18 +332,41 @@
     let left = [...queue];
     for (let s = 2; s < SEMESTERS && left.length; s++) {
       const candidates = left
-        .filter((c) => earliestSemester(c) <= s && ready(c, s) && !(semesterStatus(s) === 'now' && !isOffered(c)))
+        .filter((c) => earliestSemester(c) <= s && ready(c, s) && !(semesterStatus(s) === 'now' && !isOffered(c))
+          && (!T || T.offeredIn(c, semesterTerm(s)) !== false)) // not in a season it doesn't run
         .sort((a, b) => chain(b) - chain(a) || byCode(a, b));
       let taken = 0;
       for (const code of candidates) {
         const su = info(code).su;
         if (taken > 0 && taken + su > REQUIRED_PER_SEMESTER) continue;
+        if (T && !T.fits(code, sems[s], semesterTerm(s))) continue; // would clash in every section choice
         put(code, s);
         taken += su;
       }
       left = left.filter((c) => !placed.has(baseCode(c)));
     }
-    for (const code of left) put(code, SEMESTERS - 1); // could not be ordered; the plan will flag it
+    // Courses that didn't fit anywhere above: the latest semester of a season they run in,
+    // preferring one after their prerequisites and without a clash (the plan flags the rest).
+    for (const code of left) {
+      const seasonOk = [];
+      for (let s = SEMESTERS - 1; s >= 2; s--) if (!T || T.offeredIn(code, semesterTerm(s)) !== false) seasonOk.push(s);
+      const s = seasonOk.find((x) => ready(code, x) && (!T || T.fits(code, sems[x], semesterTerm(x))))
+        ?? seasonOk.find((x) => ready(code, x)) ?? seasonOk[0] ?? SEMESTERS - 1;
+      put(code, s);
+    }
+
+    // Summer courses into a summer once their prerequisites are done: internships (x95)
+    // preferably after Year 3, the usual time; other summer courses in the earliest
+    // summer from Year 2. Failing that, the last summer (the plan will flag it).
+    for (const code of summerCourses) {
+      const done = (k) => prereqOf(code).every((g) => {
+        const mine = g.filter((p) => placed.has(baseCode(p)));
+        return !mine.length || mine.some((p) => position(placed.get(baseCode(p))) < position(SEMESTERS + k));
+      });
+      const order = / 395[A-Z]?$/.test(code) ? [2, 1, 0] : [1, 2, 0];
+      const k = order.find(done) ?? SUMMERS - 1;
+      put(code, SEMESTERS + k);
+    }
 
     // 3. Elective placeholders for whatever each category still needs.
     const group = { university: [], core: [], extra: [], area: [], free: [], topUp: [] };
@@ -328,8 +387,9 @@
     // Double major / minor electives: each one takes the place of one of the major's free
     // electives while there are some (it counts there too), otherwise it is extra.
     for (const x of extras) {
-      const xUsed = allocate(sems, x.excl).used;
-      for (const cat of x.excl.filter((c) => c.kind === 'core' || c.kind === 'area')) {
+      // Counted with the placeholders planned so far: the major's HUM courses count for a double major too.
+      const xUsed = allocate([...sems, Object.values(group).flat()], x.excl).used;
+      for (const cat of x.excl.filter((c) => ['university', 'core', 'area'].includes(c.kind))) {
         for (let k = Math.ceil(need(cat, xUsed) / SLOT_SU); k > 0; k--) {
           group.free.pop();
           group.extra.push(makeSlot(cat.id));
@@ -538,8 +598,12 @@
         </div>`;
     if (facultyCat) also.push(alsoMeter(facultyCat.name, a.faculty, facultyCat.minCourses, 'courses'));
     for (const o of overlays) also.push(alsoMeter(o.name, a.split[o.field] || 0, o.ects, 'ECTS'));
+    const short = [
+      ...(facultyCat && a.faculty < facultyCat.minCourses ? [facultyCat.name] : []),
+      ...overlays.filter((o) => (a.split[o.field] || 0) < o.ects).map((o) => o.name),
+    ];
     const alsoHtml = also.length
-      ? `<div class="also-label">Also counted, on top of the groups above</div><div class="meters also">${also.join('')}</div>` : '';
+      ? `<div class="also-label">Also counted, on top of the groups above</div><div class="meters also">${also.join('')}</div>${placeholderHint(short)}` : '';
 
     const required = cats.find((c) => c.kind === 'required');
     const missing = required ? required.courses.filter((code) => CATALOG[code] && whereIs(code) < 0) : [];
@@ -568,27 +632,39 @@
             ${goal != null ? meter(have, goal) : ''}
           </div>`;
       });
-      // A double major's total is the whole plan against major + 30 SU; a minor's is what its groups hold.
-      const goal = extraGoal(x);
-      const have = x.kind === 'dm' ? a.su : [...xa.used.values()].reduce((t, u) => t + u.su, 0);
-      if (goal) {
-        meters.push(`
+      const totalMeter = (label, have, goal, unit) => `
           <div class="m" style="--k: var(--k-faculty)">
-            <div class="m-label">${x.kind === 'dm' ? 'Total for both diplomas <small>your major + 30</small>' : 'Minor total'}</div>
-            <div class="m-val">${have >= goal ? '<span class="ok" aria-label="met">✓</span> ' : ''}${fmt(have)} / ${goal} SU</div>
+            <div class="m-label">${label}</div>
+            <div class="m-val">${have >= goal ? '<span class="ok" aria-label="met">✓</span> ' : ''}${fmt(have)} / ${goal} ${unit}</div>
             ${meter(have, goal)}
-          </div>`);
+          </div>`;
+      const short = [];
+      if (x.kind === 'dm') {
+        // Engineering / Basic Science ECTS of the double major that your major doesn't already require.
+        for (const o of S.overlaysFor(x.key, x.term)) {
+          if (overlays.some((m) => m.field === o.field && m.ects >= o.ects)) continue;
+          const have = a.split[o.field] || 0;
+          meters.push(totalMeter(esc(o.name), have, o.ects, 'ECTS'));
+          if (have < o.ects) short.push(o.name);
+        }
+        // Totals: the whole plan against your major + 30 SU and + 60 ECTS.
+        if (extraGoal(x)) meters.push(totalMeter('Total for both diplomas <small>your major + 30</small>', a.su, extraGoal(x), 'SU'));
+        if (extraGoalEcts(x)) meters.push(totalMeter('ECTS for both diplomas <small>your major + 60</small>', a.ects, extraGoalEcts(x), 'ECTS'));
+      } else if (extraGoal(x)) {
+        meters.push(totalMeter('Minor total', [...xa.used.values()].reduce((t, u) => t + u.su, 0), extraGoal(x), 'SU'));
       }
       const missing = x.excl.filter((c) => c.kind === 'required')
         .flatMap((c) => c.courses).filter((code) => CATALOG[code] && whereIs(code) < 0 && whereIs(baseCode(code)) < 0);
+      // SU's rules: sabanciuniv.edu/en/double-majors-details and /en/minor-programs-details
       const note = x.kind === 'dm'
-        ? 'Needs your whole major, these groups, 30 SU on top of the major (the total), and a 3.20 GPA.'
-        : 'Courses can count toward your major and this minor at the same time here; check SU\'s rules on shared courses.';
+        ? 'Needs your whole major, every group below, at least 30 SU and 60 ECTS on top of your major, and a 3.20 GPA overall and in each program. Courses in both programs count for both.'
+        : 'Needs every group below, and a 2.72 GPA overall and in the minor\'s courses. Some minors add rules, such as one course from each topic list:';
       return `
         <div class="extra-prog">
           <div class="extra-title">${esc(x.title)}${x.term !== state.entry ? ` <small>(requirements of ${esc(S.termName(x.term))})</small>` : ''}</div>
-          <p class="extra-note">${esc(note)}</p>
+          <p class="extra-note">${esc(note)} <a href="${esc(suPage(x))}" target="_blank" rel="noopener">${x.kind === 'dm' ? 'SU\'s page for it' : 'see SU\'s page'}</a>.</p>
           <div class="meters also">${meters.join('')}</div>
+          ${placeholderHint(short)}
           ${missing.length ? `<div class="missing"><span class="missing-label">Required for it, not in your plan yet:</span>
             ${missing.map((code) => `<button type="button" class="miss" data-code="${esc(code)}" title="${esc(info(code).name)} – add to ${esc(semesterTitle(state.target))}">+ ${esc(code)}</button>`).join('')}</div>` : ''}
         </div>`;
@@ -596,8 +672,17 @@
   }
 
   // ---------- Semesters ----------
+  // "Time clash" when no choice of sections avoids an overlap, else a plain link to the timetable.
+  function timesNote(sem, i) {
+    if (!T || !sem.some((c) => !isSlot(c))) return '';
+    const r = T.checkSemester(sem, semesterTerm(i), new Map(), { max: 1 }); // only needs to know if one exists
+    return r.pairs.length
+      ? `<a class="tclash" href="timetable.html?sem=${i}" title="${esc(r.pairs.map((p) => (p.a === p.b ? p.a : `${p.a} + ${p.b}`)).join(', '))} overlap in every section choice">Time clash</a>`
+      : `<a class="tlink" href="timetable.html?sem=${i}" title="See this semester on a weekly timetable">Times</a>`;
+  }
+
   function renderSemesters(a, issues) {
-    $('#semesters').innerHTML = state.plan.map((sem, i) => {
+    const cards = state.plan.map((sem, i) => {
       const status = semesterStatus(i);
       let su = 0;
       let ects = 0;
@@ -617,8 +702,15 @@
             <button type="button" class="pc-x" aria-label="Remove this placeholder">×</button>
           </li>`;
         }
-        const warn = status === 'now' && !isOffered(code)
-          ? `<span class="pc-warn">not offered in ${esc(S.termName(CURRENT_TERM))}</span>` : '';
+        // Season check: summer courses belong in a summer; others against the Fall / Spring
+        // schedules, and this term's offer for the current semester. PROJ times are arranged later.
+        let warn = '';
+        if (!isSummer(i)) {
+          const offered = T && !S.isArrangedCourse(code) ? T.offeredIn(code, semesterTerm(i)) : null;
+          if (S.isSummerCourse(code)) warn = '<span class="pc-warn">summer course: move it to a summer below</span>';
+          else if (offered === false) warn = `<span class="pc-warn">not on the ${i % 2 ? 'Spring' : 'Fall'} schedule; runs in ${i % 2 ? 'Fall' : 'Spring'}</span>`;
+          else if (status === 'now' && !isOffered(code) && !S.isArrangedCourse(code)) warn = `<span class="pc-warn">not offered in ${esc(S.termName(CURRENT_TERM))}</span>`;
+        }
         const iss = issues.get(code) || { late: [], missing: [] };
         const order = iss.late.map((item) => `<span class="pc-prereq">${esc(lateText(i, item))}</span>`).join('')
           + iss.missing.map((g) => `<span class="pc-missing">Needs ${esc(g.join(' or '))}, not in your plan</span>`).join('');
@@ -631,22 +723,29 @@
           </li>`;
       }).join('');
       const target = i === state.target;
+      // The 15–20 credit load and the timetable apply to Fall and Spring, not to summers.
       let loadNote = '';
-      if (sem.length && su < LOAD_MIN) loadNote = `<span class="load low" title="A normal load is ${LOAD_MIN}–${LOAD_MAX} SU credits">Under ${LOAD_MIN}</span>`;
-      else if (su > LOAD_MAX) loadNote = `<span class="load over" title="More than ${LOAD_MAX} SU credits is an overload">Overload</span>`;
+      if (!isSummer(i) && sem.length && su < LOAD_MIN) loadNote = `<span class="load low" title="A normal load is ${LOAD_MIN}–${LOAD_MAX} SU credits">Under ${LOAD_MIN}</span>`;
+      else if (!isSummer(i) && su > LOAD_MAX) loadNote = `<span class="load over" title="More than ${LOAD_MAX} SU credits is an overload">Overload</span>`;
+      const empty = isSummer(i)
+        ? 'Internships (x95) and summer courses go here.'
+        : (target ? 'Press + next to a course in the list, or drag one here.' : 'Drag courses here, or click this semester to add to it.');
       return `
-        <article class="sem ${status}${target ? ' target' : ''}" data-sem="${i}">
+        <article class="sem ${status}${target ? ' target' : ''}${isSummer(i) ? ' summer' : ''}" data-sem="${i}">
           <header class="sem-head">
             <button type="button" class="sem-pick" aria-pressed="${target}" title="Add courses from the list to this semester">
               <span class="sem-title">${semesterTitle(i)}</span>
               <span class="sem-term">${S.termName(semesterTerm(i))}${status === 'now' ? ' · this term' : ''}</span>
             </button>
-            <span class="sem-cr"><span><b>${fmt(su)}</b> SU · ${fmt(ects)} ECTS</span>${loadNote}</span>
+            <span class="sem-cr"><span><b>${fmt(su)}</b> SU · ${fmt(ects)} ECTS</span>${loadNote}${isSummer(i) ? '' : timesNote(sem, i)}</span>
           </header>
           <ul class="sem-list">${items}</ul>
-          ${sem.length ? '' : `<p class="sem-empty">${target ? 'Press + next to a course in the list, or drag one here.' : 'Drag courses here, or click this semester to add to it.'}</p>`}
+          ${sem.length ? '' : `<p class="sem-empty">${empty}</p>`}
         </article>`;
-    }).join('');
+    });
+    $('#semesters').innerHTML = `<div class="sem-grid">${cards.slice(0, SEMESTERS).join('')}</div>
+      <div class="summer-label">Summers <small>internships and summer courses; no 15–20 credit rule</small></div>
+      <div class="summer-row">${cards.slice(SEMESTERS).join('')}</div>`;
   }
 
   function render() {
@@ -801,7 +900,7 @@
     });
     $('#clear-dialog form').addEventListener('submit', (e) => {
       if (e.submitter?.value !== 'clear') return;
-      state.plan = Array.from({ length: SEMESTERS }, () => []);
+      state.plan = Array.from({ length: TERMS }, () => []);
       savePlan();
       render();
       toast('Plan cleared');

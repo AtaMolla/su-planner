@@ -50,6 +50,7 @@
 .extra-title { font-size: 14px; font-weight: 700; }
 .extra-title small { color: var(--muted); font-weight: 500; }
 .extra-note { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.extra-note a { color: var(--brand-hi); font-weight: 600; }
 .progress {
   padding: 14px 16px; border-radius: 12px;
   background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -87,13 +88,20 @@
 .miss:hover { background: #eef4fc; }
 
 /* ---------- Semesters ---------- */
-.semesters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.semesters { display: flex; flex-direction: column; gap: 12px; }
+.summer-label { margin: 4px 2px -4px; font-size: 13px; font-weight: 700; color: #364250; }
+.summer-label small { margin-left: 6px; color: var(--muted); font-weight: 500; }
+.summer-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.sem.summer { min-height: 110px; background: #fffdf6; }
+.sem.summer .sem-head { border-bottom-style: dashed; }
+@media (max-width: 640px) { .summer-row { grid-template-columns: minmax(0, 1fr); } }
+.sem-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (min-width: 1380px) {
   /* Years left to right, Fall above Spring. */
-  .semesters { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); grid-auto-flow: column; }
+  .sem-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); grid-auto-flow: column; }
 }
 @media (max-width: 640px) {
-  .semesters { grid-template-columns: minmax(0, 1fr); }
+  .sem-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .sem {
@@ -115,6 +123,11 @@
 .sem-term { color: var(--muted); font-size: 12px; }
 .sem.now .sem-term { color: var(--brand-hi); font-weight: 600; }
 .sem-cr { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.tlink, .tclash { font-size: 11px; font-weight: 700; text-decoration: none; }
+.tlink { color: var(--brand-hi); }
+.tlink:hover { text-decoration: underline; }
+.tclash { padding: 1px 6px; border-radius: 4px; background: #fde2e2; color: var(--bad); }
+.tclash::before { content: "⚠ "; }
 .load { padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
 .load::before { content: "⚠ "; }
 .load.low { background: #fff4d6; color: #8a5a00; }
@@ -170,7 +183,7 @@
   body { display: block; overflow: visible; background: #fff; }
   .plan-page main { overflow: visible; padding: 0; background: #fff; }
   .progress, .sem { box-shadow: none; border: 1px solid #c8ced6; }
-  .semesters { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); grid-auto-flow: column; }
+  .sem-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); grid-auto-flow: column; }
   .sem { min-height: 0; break-inside: avoid; }
   .sem.target { border-color: #c8ced6; }
   .sem.target .sem-head { background: none; }

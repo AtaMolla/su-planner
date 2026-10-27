@@ -54,6 +54,10 @@ ROW_RE = re.compile(
 TOTAL_RE = re.compile(
     r'<b>\s*Total\s*</b>\s*</td>\s*<td[^>]*>\s*<b>([^<]*)</b>\s*</td>\s*<td[^>]*>\s*<b>([^<]*)</b>')
 
+# Codes on SU's pages that are really another course: PROJ 302 isn't a separate class,
+# it is PROJ 201.
+ALIASES = {"PROJ 302": "PROJ 201"}
+
 # Every course seen on any page: code -> [name, SU credits, ECTS credits].
 CATALOG = {}
 
@@ -99,8 +103,9 @@ def number(cell):
 def codes_in(text):
     """Course codes listed in `text`, in order; their names and credits go into CATALOG."""
     for subj, numb, name, ects, su in ROW_RE.findall(text):
-        CATALOG[f"{subj} {numb}"] = [html.unescape(name).strip(), number(su), number(ects)]
-    return list(dict.fromkeys(f"{s} {n}" for s, n in COURSE_RE.findall(text)))
+        if f"{subj} {numb}" not in ALIASES:
+            CATALOG[f"{subj} {numb}"] = [html.unescape(name).strip(), number(su), number(ects)]
+    return list(dict.fromkeys(ALIASES.get(f"{s} {n}", f"{s} {n}") for s, n in COURSE_RE.findall(text)))
 
 
 def read_program(code, term):
@@ -186,6 +191,7 @@ def parse_prereq(text):
             return groups(node[1]) + groups(node[2])
         return [a | b for a in groups(node[1]) for b in groups(node[2])]
 
+    tokens = [ALIASES.get(t, t) for t in tokens]
     if not tokens:
         return []
     try:

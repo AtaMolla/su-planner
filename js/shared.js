@@ -21,6 +21,19 @@ window.SUShared = (() => {
   // Requirement pages sometimes add a letter ("CIP 101N") to a course offered as "CIP 101".
   const baseCode = (code) => code.replace(/[A-Z]+$/, '');
 
+  // Codes that are really another course (PROJ 302 isn't a separate class: it is PROJ 201).
+  // Saved plans from before this was known are converted when they load.
+  const ALIASES = { 'PROJ 302': 'PROJ 201' };
+  const canonicalCode = (code) => ALIASES[code] || code;
+
+  // Summer courses: x95 internships (CS 395, IE 395…) and courses SU names "Summer Internship"
+  // (MGMT 300, PROJ 303). They don't run in Fall or Spring. "Summer Project" courses such as
+  // PROJ 302 are taken during the regular semesters, like PROJ 201.
+  const isSummerCourse = (code) => / 395[A-Z]?$/.test(code)
+    || /\bsummer internship\b/i.test(REQUIREMENTS.catalog?.[code]?.[0] || '');
+  // PROJ courses (PROJ 201, PROJ 302…) run in the semester, with meeting times arranged after you register.
+  const isArrangedCourse = (code) => code.startsWith('PROJ ') && !isSummerCourse(code);
+
   const programById = new Map();
   for (const f of PROGRAMS.faculties) for (const p of f.programs) programById.set(p.id, { ...p, faculty: f });
 
@@ -205,7 +218,7 @@ window.SUShared = (() => {
   }
 
   return {
-    REQUIREMENTS, PROGRAMS, KEYS, esc, fold, baseCode, programById, termsFor, requirementsFor,
+    REQUIREMENTS, PROGRAMS, KEYS, esc, fold, baseCode, canonicalCode, isSummerCourse, isArrangedCourse, programById, termsFor, requirementsFor,
     totalsFor, overlaysFor, categoryKind, categoryRank, minLabel, sortedCategories, termName,
     fillProgramOptions, readPicks, resolvePicks, readExtras, extraPrograms, extraTagsFor, mountExtras,
   };
