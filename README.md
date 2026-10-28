@@ -8,7 +8,16 @@ Plain HTML, CSS and JavaScript: no build step, no libraries.
 ## Open it
 
 Double-click `index.html`. It works straight from disk because the data files are
-`.js` files, not fetched JSON. The three pages are linked in the top bar.
+`.js` files, not fetched JSON. The pages are linked in the top bar.
+
+Or serve it locally, which always shows the latest version of every file (plain
+`python -m http.server` lets Chrome keep showing old copies of pages):
+
+```
+python tools/serve.py
+```
+
+then open http://localhost:8765/.
 
 ## The pages
 
@@ -117,6 +126,15 @@ your entry year (or the newest year they have, if they didn't exist yet).
   **Times** link), warns about courses planned in a season they don't run, and the suggested plan
   avoids both.
 
+### How to use (`help.html`)
+
+- Short steps for every page with real screenshots (`img/help/*.webp`) whose numbered markers match
+  the steps. Semester times explains flipping through every clash-free timetable. The Semester times
+  page links to it ("How it works"), and so does the weekly page's About dialog.
+- The screenshots show an Industrial Engineering student who started in Fall 2026, with the
+  suggested plan. Retake them after visible UI changes (they come from a headless Chrome script that
+  stages that plan and adds the markers).
+
 ### Prerequisites (`prereq.html`)
 
 - A flowchart of the program's required, core and area courses: arrows go from a course to the
@@ -165,9 +183,20 @@ facts: requirement categories and minimum credits, course lists (identical
 lists stored once), and for each course its name, SU and ECTS credits, Engineering and
 Basic Science ECTS, and prerequisites. Spring and Summer admits aren't read.
 
+Prerequisites come from SU's registration system (Banner), which is what registration checks:
+the course's current class section first, then its Banner catalog entry. SU's public course
+pages can be out of date (one said IE 304 needs IE 312; registration requires IE 311), so they are
+used only for courses Banner no longer lists. Old codes that no longer exist (MS 301 → IE 311)
+are dropped. To re-read only the prerequisites (a few minutes):
+
+```
+python tools/build_requirements.py --prereqs-only
+```
+
 ## Files
 
-- `index.html`, `plan.html`, `timetable.html`, `prereq.html`: the four pages
+- `index.html`, `plan.html`, `timetable.html`, `prereq.html`: the four tools
+- `help.html`, `css/help.css`, `img/help/`: the How to use page and its screenshots
 - `js/times.js`: Fall/Spring class times, the search for every clash-free timetable, and the
   least-overlap solver that explains clashes (used by the plan and times pages)
 - `docs/schedule-model.md`: the scheduling model (sets, variables, constraints) and the web algorithm

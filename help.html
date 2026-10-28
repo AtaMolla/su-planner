@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SU Planner – How to use</title>
+  <meta name="description" content="How to use SU Planner: pick your program, plan your 4 years, see every clash-free timetable, and check prerequisites.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/help.css">
+</head>
+<body class="help-page">
+  <header class="topbar">
+    <h1 class="brand">SU Planner</h1>
+    <nav class="page-tabs" aria-label="Pages">
+      <a href="index.html"><span class="long">Weekly schedule</span><span class="short">Week</span></a>
+      <a href="plan.html"><span class="long">4-year plan</span><span class="short">Plan</span></a>
+      <a href="timetable.html"><span class="long">Semester times</span><span class="short">Times</span></a>
+      <a href="prereq.html"><span class="long">Prerequisites</span><span class="short">Prereqs</span></a>
+      <a href="help.html" aria-current="page"><span class="long">How to use</span><span class="short">Help</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <article class="help">
+      <header class="help-head">
+        <h2>How to use SU Planner</h2>
+        <p>Plan your whole degree in a few steps. Everything you choose is saved in this browser.</p>
+        <ol class="toc" aria-label="Steps">
+          <li><a href="#start"><span>1</span>Pick your program</a></li>
+          <li><a href="#plan"><span>2</span>4-year plan</a></li>
+          <li><a href="#times"><span>3</span>Semester times</a></li>
+          <li><a href="#weekly"><span>4</span>Weekly schedule</a></li>
+          <li><a href="#prereq"><span>5</span>Prerequisites</a></li>
+        </ol>
+      </header>
+
+      <section id="start" class="step" aria-labelledby="start-title">
+        <div class="step-head">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3 id="start-title">Pick your program</h3>
+        </div>
+        <p class="step-lead">Do this once, in the side panel. Every page uses it.</p>
+        <div class="step-body side-by-side">
+          <ol class="marks">
+            <li>Choose your program.</li>
+            <li>Choose the year you started. Your requirements depend on it.</li>
+            <li>Optional: add a double major or minors.</li>
+          </ol>
+          <figure class="shot narrow">
+            <a href="img/help/start.webp"><img src="img/help/start.webp" width="388" height="249" alt="Side panel with the program picker, the year you started, and the double major and minors box"></a>
+          </figure>
+        </div>
+      </section>
+
+      <section id="plan" class="step" aria-labelledby="plan-title">
+        <div class="step-head">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3 id="plan-title">Plan your 4 years</h3>
+          <a class="open" href="plan.html">Open 4-year plan →</a>
+        </div>
+        <p class="step-lead">Your eight semesters, filled in for you.</p>
+        <ol class="marks">
+          <li><b>Suggest plan</b> fills every semester. Press it any time to start over.</li>
+          <li>The bars show what each requirement still needs.</li>
+          <li>Drag a course to another semester. Add courses with <b>+</b> in the course list.</li>
+          <li>Dashed cards are electives you still choose: click one, then pick a course.</li>
+        </ol>
+        <figure class="shot">
+          <a href="img/help/plan.webp"><img src="img/help/plan.webp" width="1440" height="900" loading="lazy" alt="4-year plan page with the Suggest plan button, requirement bars, semester cards and a dashed elective"></a>
+        </figure>
+        <p class="tip bad">Red text on a course means it comes before its prerequisite. Move it to a later semester.</p>
+      </section>
+
+      <section id="times" class="step key" aria-labelledby="times-title">
+        <div class="step-head">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3 id="times-title">See every possible timetable</h3>
+          <a class="open" href="timetable.html">Open Semester times →</a>
+        </div>
+        <p class="step-lead">For each semester of your plan, the page finds <b>every</b> choice of sections with no clashes. Flip through them and keep the one you like.</p>
+        <figure class="shot">
+          <a href="img/help/times-bar.webp"><img src="img/help/times-bar.webp" width="1072" height="110" alt="Close-up: No clashes, 80 different timetables work. Arrows to flip, Timetable 2 of 80, and Keep this one"></a>
+        </figure>
+        <ol class="marks">
+          <li>Pick a semester from your plan.</li>
+          <li>Use <b>‹ ›</b> (or the <kbd>←</kbd> <kbd>→</kbd> keys) to see each timetable. “Timetable 2 of 80” means 80 different weeks work.</li>
+          <li>Like one? <b>Keep this one</b> saves its sections.</li>
+          <li>Or choose a section yourself. Only timetables with it are shown; <b>Auto</b> frees it again.</li>
+        </ol>
+        <figure class="shot">
+          <a href="img/help/times.webp"><img src="img/help/times.webp" width="1440" height="900" loading="lazy" alt="Semester times page: the semester list, the timetable switcher, Keep this one, and the section pickers"></a>
+        </figure>
+        <p class="tip bad">A red warning means two courses clash in every timetable. Move one of them to another semester in your 4-year plan.</p>
+      </section>
+
+      <section id="weekly" class="step" aria-labelledby="weekly-title">
+        <div class="step-head">
+          <span class="step-num" aria-hidden="true">4</span>
+          <h3 id="weekly-title">Build this term's schedule</h3>
+          <a class="open" href="index.html">Open Weekly schedule →</a>
+        </div>
+        <p class="step-lead">Pick sections by hand for the current term.</p>
+        <ol class="marks">
+          <li>Search a course by code, name or instructor.</li>
+          <li>Open a course and tick one section of each part (lecture, recitation…).</li>
+          <li><b>Copy CRNs</b> when you are ready to register.</li>
+        </ol>
+        <figure class="shot">
+          <a href="img/help/weekly.webp"><img src="img/help/weekly.webp" width="1440" height="900" loading="lazy" alt="Weekly schedule page with the search box, the course list, the timetable and the Copy CRNs button"></a>
+        </figure>
+      </section>
+
+      <section id="prereq" class="step" aria-labelledby="prereq-title">
+        <div class="step-head">
+          <span class="step-num" aria-hidden="true">5</span>
+          <h3 id="prereq-title">Check prerequisites</h3>
+          <a class="open" href="prereq.html">Open Prerequisites →</a>
+        </div>
+        <p class="step-lead">See which courses open which.</p>
+        <ol class="marks">
+          <li>Click a course. Arrows show what it needs and what it opens.</li>
+          <li>The side panel lists them.</li>
+        </ol>
+        <figure class="shot">
+          <a href="img/help/prereq.webp"><img src="img/help/prereq.webp" width="1440" height="900" loading="lazy" alt="Prerequisite chart with IE 311 selected and its details in the side panel"></a>
+        </figure>
+      </section>
+
+      <section class="step notes" aria-labelledby="notes-title">
+        <h3 id="notes-title">Good to know</h3>
+        <ul>
+          <li>Your plan is saved <b>in this browser only</b>. Another browser or your phone starts empty.</li>
+          <li>Class times come from SU's latest Fall and Spring schedules. Future terms may change.</li>
+          <li>Check your final plan with your advisor and SU's Degree Evaluation.</li>
+        </ul>
+      </section>
+    </article>
+  </main>
+</body>
+</html>

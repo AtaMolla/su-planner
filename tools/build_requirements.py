@@ -2,9 +2,16 @@
 
 Usage:
     python tools/build_requirements.py [NEWEST_TERM] [YEARS]
+    python tools/build_requirements.py --prereqs-only
 
-NEWEST_TERM  the latest Fall admit term to read, e.g. 202601 = Fall 2026-2027 (default 202601)
-YEARS        how many Fall entry years to read, going back from NEWEST_TERM (default 7)
+NEWEST_TERM     the latest Fall admit term to read, e.g. 202601 = Fall 2026-2027 (default 202601)
+YEARS           how many Fall entry years to read, going back from NEWEST_TERM (default 7)
+--prereqs-only  only re-read every course's prerequisites into the existing data file (a few minutes)
+
+Prerequisites come from SU's registration system (Banner), which is what registration checks:
+a course's current class section (data/courses.js, data/schedule-*.js), else its Banner catalog
+entry. The public course page is used only for courses Banner no longer lists; it can be out of
+date (it said IE 304 needs IE 312; registration requires IE 311).
 
 Each program's curriculum depends on the term the student was first admitted.
 For every entry year it reads the 12 undergraduate degree programs, plus every
@@ -143,12 +150,31 @@ def read_program(code, term):
 
 PREREQ_RE = re.compile(r"Prerequisite:(.*?)(?:Corequisite:|ECTS Credit:|General Requirements:)", re.S)
 PREREQ_TOKEN_RE = re.compile(r"\(|\)|\band\b|\bor\b|\b[A-Z]{2,5} \d{2,5}[A-Z]?\b")
+# Banner (SU's registration system) pages: the catalog entry and each class section.
+BANNER_PREREQ_RE = re.compile(r"Prerequisites:\s*</SPAN>(.*?)(?:</TD>|Return to Previous)", re.S | re.I)
+OPERATORS = ("and", "or")
+
+
+def tidy(tokens):
+    """Drop operators with nothing on one side, e.g. Banner's '... SPS 102 and 000 to 9999'."""
+    out = []
+    for tok in tokens:
+        if tok in OPERATORS and (not out or out[-1] in OPERATORS or out[-1] == "("):
+            continue
+        if tok == ")" and out and out[-1] in OPERATORS:
+            out.pop()
+        out.append(tok)
+    while out and out[-1] in OPERATORS:
+        out.pop()
+    return out
 
 
 def parse_prereq(text):
     """'(MATH 201 ... or MATH 212 ...) and MATH 203 ...' -> [['MATH 201', 'MATH 212'], ['MATH 203']]:
     every inner list is needed, and any one course from it is enough."""
-    tokens = PREREQ_TOKEN_RE.findall(html.unescape(re.sub(r"<[^>]+>", " ", text)))
+    text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", text)))  # also non-breaking spaces
+    text = text.replace("Course or Test:", " ")  # Banner's wording for a course rule
+    tokens = tidy(PREREQ_TOKEN_RE.findall(text))
     pos = 0
 
     def peek():
@@ -201,19 +227,128 @@ def parse_prereq(text):
     return sorted({tuple(sorted(g)) for g in result})[:20]
 
 
+def schedule_sections():
+    """Course code -> [(term, CRN)] of one section per class schedule in data/, newest term first."""
+    found = {}
+    files = sorted(OUT.parent.glob("schedule-*.js"), reverse=True) + [OUT.parent / "courses.js"]
+    for path in files:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text[text.index("{", text.index("= {") if "= {" in text else 0):text.rstrip().rindex(";")])
+        for course in data.get("courses", []):
+            sections = [s for c in course["classes"] for s in c["sections"]]
+            if sections:
+                found.setdefault(course["code"], []).append((data["term"], sections[0]["crn"]))
+    return found
+
+
+SECTIONS = {}      # filled by load_sections()
+BANNER_TERMS = []  # terms of the class schedules in data/, newest first
+_exists = {}
+
+
+def load_sections():
+    SECTIONS.update(schedule_sections())
+    BANNER_TERMS[:] = sorted({t for secs in SECTIONS.values() for t, _ in secs}, reverse=True) or ["202601"]
+
+
+def banner_catalog(code):
+    """(is the course in SU's current Banner catalog, the prerequisite text there)."""
+    subj, numb = code.split(" ", 1)
+    for term in BANNER_TERMS:
+        try:
+            page = fetch(f"bwckctlg.p_disp_course_detail?cat_term_in={term}&subj_code_in={subj}&crse_numb_in={numb}")
+        except OSError:
+            continue
+        if "No course to display" in page:
+            continue
+        m = BANNER_PREREQ_RE.search(page)
+        return True, m.group(1) if m else ""
+    return False, ""
+
+
+def exists(code):
+    """Is the course still around? Old codes (MS 301 is now IE 311) aren't, so they are dropped."""
+    if code in CATALOG or code in SECTIONS:
+        return True
+    if code not in _exists:
+        _exists[code] = banner_catalog(code)[0]
+    return _exists[code]
+
+
+def read_prereq(code, public_page):
+    """A course's prerequisites as AND-of-OR groups, from the most reliable place that lists them:
+    1. its current class section in Banner (what registration checks),
+    2. its Banner catalog entry,
+    3. the public course page (only for courses Banner no longer has)."""
+    text = ""
+    for term, crn in SECTIONS.get(code, []):
+        try:
+            m = BANNER_PREREQ_RE.search(fetch(f"bwckschd.p_disp_detail_sched?term_in={term}&crn_in={crn}"))
+        except OSError:
+            continue
+        if m and parse_prereq(m.group(1)):
+            text = m.group(1)
+            break
+    in_banner = bool(SECTIONS.get(code))
+    if not text:
+        listed, catalog_text = banner_catalog(code)
+        in_banner = in_banner or listed
+        text = catalog_text
+    if not text and not in_banner:
+        p = PREREQ_RE.search(public_page or "")
+        text = p.group(1) if p else ""
+    groups = []
+    for g in parse_prereq(text):
+        g = sorted({c for c in g if exists(c)})
+        if g and code not in g:  # some pages list the course as its own prerequisite
+            groups.append(g)
+    return sorted(groups)
+
+
 def course_details(code):
-    """A course's Engineering ECTS, Basic Science ECTS and prerequisites, from its catalog page."""
+    """A course's Engineering ECTS and Basic Science ECTS (public course page) and prerequisites."""
     subj, numb = code.split(" ", 1)
     try:
         page = fetch(f"sabanci_www.p_get_courses?levl_code=UG&subj_code={subj}&crse_numb={numb}&lang=eng")
     except OSError:
-        return None, None, []
+        page = ""
     m = SPLIT_RE.search(page)
     eng, basic = (number(m.group(1)), number(m.group(2))) if m else (None, None)
-    p = PREREQ_RE.search(page)
-    # Some pages list the course as its own prerequisite; drop those groups.
-    prereq = [list(g) for g in parse_prereq(p.group(1)) if code not in g] if p else []
-    return eng, basic, prereq
+    return eng, basic, read_prereq(code, page)
+
+
+def refresh_prereqs():
+    """--prereqs-only: re-read every catalog course's prerequisites into the existing data file."""
+    text = OUT.read_text(encoding="utf-8")
+    out = json.loads(text[text.index("{"):text.rstrip().rindex(";")])
+    CATALOG.update(out["catalog"])
+    load_sections()
+
+    def one(code):
+        page = "" if code in SECTIONS else fetch_public(code)
+        return read_prereq(code, page)
+
+    codes = sorted(CATALOG)
+    changed = 0
+    with ThreadPoolExecutor(max_workers=4) as workers:
+        for code, prereq in zip(codes, workers.map(one, codes)):
+            if CATALOG[code][5] != prereq:
+                changed += 1
+            CATALOG[code] = CATALOG[code][:5] + [prereq]
+    out["catalog"] = dict(sorted(CATALOG.items()))
+    body = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
+    OUT.write_text(f"window.SU_REQUIREMENTS = {body};\n", encoding="utf-8")
+    print(f"Prerequisites re-read for {len(codes)} courses; {changed} changed. Wrote {OUT}")
+
+
+def fetch_public(code):
+    subj, numb = code.split(" ", 1)
+    try:
+        return fetch(f"sabanci_www.p_get_courses?levl_code=UG&subj_code={subj}&crse_numb={numb}&lang=eng")
+    except OSError:
+        return ""
 
 
 def term_name(term):
@@ -275,6 +410,7 @@ def main():
         print(f"{term_name(term)}: {found[term]} programs, {extra} double majors and minors")
 
     # Catalog entries become [name, SU, ECTS, Engineering ECTS, Basic Science ECTS, prerequisites].
+    load_sections()
     codes = sorted(CATALOG)
     with ThreadPoolExecutor(max_workers=4) as workers:
         for code, details in zip(codes, workers.map(course_details, codes)):
@@ -290,4 +426,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--prereqs-only" in sys.argv:
+        refresh_prereqs()
+    else:
+        main()
