@@ -126,6 +126,20 @@ your entry year (or the newest year they have, if they didn't exist yet).
   **Times** link), warns about courses planned in a season they don't run, and the suggested plan
   avoids both.
 
+### All timetables (`schedules.html`)
+
+- Every clash-free timetable for a semester of your plan, side by side as small weekly grids
+  (24 at a time, **Show more** for the rest; large semesters list the first 2,000). The side
+  panel shows how many each semester has.
+- **Keep hours free**: a small week grid. Click or drag over any hours you want free; a day name
+  frees the whole day, a time frees that hour on every day. Only timetables with no class in those
+  hours are shown, and the side panel shows how many each semester keeps ("16 of 80"). The choice
+  is saved in the browser and applies to every semester. If none fits, it names the course part
+  whose every section meets in a chosen hour. This is an extra rule in the same search, not a ranking.
+- Each card says how many days it uses and its first and last class. **Use this one** saves its
+  sections as your picks and opens it in Semester times; the card you picked is marked.
+- Semester times links here ("See all 80 at once").
+
 ### How to use (`help.html`)
 
 - Short steps for every page with real screenshots (`img/help/*.webp`) whose numbered markers match
@@ -196,7 +210,10 @@ python tools/build_requirements.py --prereqs-only
 ## Files
 
 - `index.html`, `plan.html`, `timetable.html`, `prereq.html`: the four tools
+- `schedules.html`, `js/schedules.js`, `css/schedules.css`: the All timetables page
 - `help.html`, `css/help.css`, `img/help/`: the How to use page and its screenshots
+- `tools/bump_version.py`: stamps the pages' CSS/JS/data links with a new `?v=` so browsers
+  don't mix old and new files; run it before uploading changed CSS, JS or data
 - `js/times.js`: Fall/Spring class times, the search for every clash-free timetable, and the
   least-overlap solver that explains clashes (used by the plan and times pages)
 - `docs/schedule-model.md`: the scheduling model (sets, variables, constraints) and the web algorithm

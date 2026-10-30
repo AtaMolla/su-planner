@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SU Planner – All timetables</title>
+  <meta name="description" content="Every clash-free weekly timetable for a semester of your 4-year plan, side by side.">
+  <link rel="stylesheet" href="css/style.css?v=202610301126">
+  <link rel="stylesheet" href="css/timetable.css?v=202610301126">
+  <link rel="stylesheet" href="css/schedules.css?v=202610301126">
+</head>
+<body class="times-page schedules-page">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 9.5L12 5l10 4.5L12 14z"/><path d="M6 11.5V16c3.5 2.5 8.5 2.5 12 0v-4.5M22 9.5v5"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <button id="menu-toggle" class="icon-btn" type="button" aria-label="Show or hide the side panel" aria-controls="sidebar">
+      <svg class="i"><use href="#i-menu"/></svg>
+    </button>
+    <h1 class="brand">SU Planner</h1>
+    <nav class="page-tabs" aria-label="Pages">
+      <a href="index.html"><span class="long">Weekly schedule</span><span class="short">Week</span></a>
+      <a href="plan.html"><span class="long">4-year plan</span><span class="short">Plan</span></a>
+      <a href="timetable.html"><span class="long">Semester times</span><span class="short">Times</span></a>
+      <a href="schedules.html" aria-current="page"><span class="long">All timetables</span><span class="short">All</span></a>
+      <a href="prereq.html"><span class="long">Prerequisites</span><span class="short">Prereqs</span></a>
+      <a href="help.html"><span class="long">How to use</span><span class="short">Help</span></a>
+    </nav>
+  </header>
+
+  <aside id="sidebar" aria-label="Semesters">
+    <label class="program-row" title="Your program">
+      <svg class="i"><use href="#i-cap"/></svg>
+      <select id="program" class="program-select" aria-label="Your program"></select>
+    </label>
+    <label id="entry-row" class="entry-row" title="Your degree requirements depend on the year you started">
+      <span>Year you started</span>
+      <select id="entry" class="entry-select" aria-label="Year you started"></select>
+    </label>
+    <div class="side-scroll">
+      <div class="side-label">Semesters in your plan</div>
+      <div id="sem-list" class="sem-list" role="tablist" aria-label="Semesters"></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <section class="tt-top">
+      <div id="all-head" class="tt-head"></div>
+      <div id="all-filters" class="all-filters" role="group" aria-label="Only show timetables with"></div>
+      <div id="all-notes" class="tt-notes"></div>
+      <div id="all-legend" class="all-legend"></div>
+    </section>
+    <div id="all-grid" class="all-grid"></div>
+    <div class="all-more"><button id="more-btn" class="btn" type="button" hidden></button></div>
+  </main>
+
+  <script src="data/courses.js?v=202610301126"></script>
+  <script src="data/schedule-202602.js?v=202610301126"></script>
+  <script src="data/requirements.js?v=202610301126"></script>
+  <script src="js/programs.js?v=202610301126"></script>
+  <script src="js/shared.js?v=202610301126"></script>
+  <script src="js/times.js?v=202610301126"></script>
+  <script src="js/schedules.js?v=202610301126"></script>
+</body>
+</html>

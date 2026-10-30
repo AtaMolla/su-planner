@@ -98,8 +98,10 @@ window.SUTimes = (() => {
   // Feasibility model, no objective: x_s = 1 if section s is taken;
   //   (1) exactly one section of every course component (lecture, recitation, lab…),
   //   (2) at most one taken section in every weekly hour slot,
-  //   (3) sections the student picked are fixed to 1.
-  // Every x that satisfies (1)–(3) is a valid timetable, and all of them are listed.
+  //   (3) sections the student picked are fixed to 1,
+  //   (5) optional: no taken section meets in hours the student wants free (a day off, no 08:40).
+  // ((4) in the document is "x is binary".) Every x that satisfies them is a valid timetable,
+  // and all of them are listed.
   // Sections of one component that meet at exactly the same hours give the same timetable,
   // so they are merged into one option (e.g. DSA 201 R A1 / A2).
   const MAX_ALTS = 2000;
@@ -135,10 +137,11 @@ window.SUTimes = (() => {
   // Depth-first search with backtracking. At each step it takes the component with the
   // fewest options still free (fail first) and stops a branch as soon as any component has
   // none left (forward checking), so dead ends are cut early.
-  function alternatives(courses, pins = new Map(), { max = MAX_ALTS, nodeLimit = 400000 } = {}) {
+  function alternatives(courses, pins = new Map(), { max = MAX_ALTS, nodeLimit = 400000, blocked = [] } = {}) {
     const vars = buildModel(courses, pins);
     const n = vars.length;
-    const occ = new Array(WORDS).fill(0);
+    // Hours to keep free (5) start out taken, so no section meeting then can be placed.
+    const occ = maskOf(blocked);
     const free = (o) => o.mask.every((w, k) => (w & occ[k]) === 0);
     const used = new Array(n).fill(false);
     const choice = new Array(n);
@@ -207,18 +210,19 @@ window.SUTimes = (() => {
 
   // The search runs again on every render, so results are kept per semester content.
   const altCache = new Map();
-  function cachedAlternatives(term, timed, pins, max) {
-    const key = JSON.stringify([term, timed.map((c) => c.code), [...pins].sort(), max]);
+  function cachedAlternatives(term, timed, pins, max, blocked) {
+    const key = JSON.stringify([term, timed.map((c) => c.code), [...pins].sort(), max, blocked]);
     if (!altCache.has(key)) {
       if (altCache.size > 60) altCache.delete(altCache.keys().next().value);
-      altCache.set(key, alternatives(timed, pins, { max }));
+      altCache.set(key, alternatives(timed, pins, { max, blocked }));
     }
     return altCache.get(key);
   }
 
   // Everything the plan needs to know about one semester's real courses (placeholders skipped).
-  // `alt` = which clash-free timetable to show; `max` = how many to look for (1 = just check).
-  function checkSemester(codes, term, pins = new Map(), { alt = 0, max = MAX_ALTS } = {}) {
+  // `alt` = which clash-free timetable to show; `max` = how many to look for (1 = just check);
+  // `blocked` = hour slots to keep free.
+  function checkSemester(codes, term, pins = new Map(), { alt = 0, max = MAX_ALTS, blocked = [] } = {}) {
     const src = sourceFor(term);
     // PROJ courses get times after registration; summer courses don't run in Fall/Spring.
     const arranged = codes.filter((c) => !c.startsWith('~') && S.isArrangedCourse(c));
@@ -235,7 +239,7 @@ window.SUTimes = (() => {
       timed.push({ ...c, code, base: c.code }); // code = as planned ("CIP 101N"), base = as scheduled ("CIP 101")
       if (c.groups.every((g) => g.sections.every((s) => !s.slots.length))) tba.push(code);
     }
-    const alts = cachedAlternatives(term, timed, pins, max);
+    const alts = cachedAlternatives(term, timed, pins, max, blocked);
     if (alts.list.length) {
       const k = Math.min(Math.max(0, alt), alts.list.length - 1);
       return { src, timed, missing, tba, arranged, summer, cost: 0, picks: alts.list[k], pairs: [], alts, alt: k };

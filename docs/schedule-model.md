@@ -29,6 +29,7 @@ missing from that season's schedule. The page lists those separately.
 | $S_k$ | sections offered for component $k$; $S = \bigcup_{k \in K} S_k$ |
 | $T$ | weekly hour slots: 5 days × 13 hours (08:40 … 20:40) = 65 slots |
 | $F \subseteq S$ | sections the student fixed in the side panel |
+| $B \subseteq T$ | hours the student wants free (All timetables page: a day off, no 08:40, any hours) |
 
 **Parameter**
 
@@ -48,16 +49,19 @@ $$x_s = 1 \qquad \forall s \in F \tag{3}$$
 
 $$x_s \in \{0, 1\} \qquad \forall s \in S \tag{4}$$
 
+$$\sum_{s \in S} a_{st}\, x_s = 0 \qquad \forall t \in B \tag{5}$$
+
 - (1) take exactly one section of every component;
 - (2) no two taken sections share an hour. This also stops a course's own lecture and recitation
   from overlapping;
 - (3) keep the sections the student fixed;
-- (4) binary variables.
+- (4) binary variables;
+- (5) no taken section meets in an hour the student wants free (empty $B$ = no such rule).
 
 **Objective**: none. It is a feasibility problem (equivalently, minimize $0$). The output is the
 set of all feasible solutions,
 
-$$X = \{\, x \in \{0,1\}^{|S|} : (1)\text{–}(3) \,\}$$
+$$X = \{\, x \in \{0,1\}^{|S|} : (1)\text{–}(3),\ (5) \,\}$$
 
 which a MIP solver would call the *solution pool*.
 
@@ -113,7 +117,8 @@ constraints), so the website solves it exactly with its own search, below.
    domain to that one section.
 2. **Encoding.** Each option's hours are a 65-bit mask (three 32-bit integers). The hours already
    taken by the partial timetable are one more mask, so the overlap test for constraint (2) is a
-   bitwise AND.
+   bitwise AND. The hours to keep free, $B$ in constraint (5), start out in that mask as if taken,
+   so no option meeting then is ever placed.
 3. **Search.** Starting from an empty timetable, repeat:
    - *Forward checking:* for every component not yet assigned, keep only the options that don't
      overlap the taken hours. If any component has none left, this branch can't be completed:

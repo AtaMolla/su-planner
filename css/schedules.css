@@ -1,0 +1,72 @@
+/* All timetables page. Builds on style.css and timetable.css (side panel, notes). */
+
+.sb.count { background: #1d3a57; color: #d5e5f6; }
+.sb.count::after { content: " timetables"; font-weight: 500; }
+
+/* Semester picker in the header, for phones (the side panel is hidden there) */
+.sem-pick { display: none; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.sem-pick select { flex: 1; padding: 7px 8px; border: 1px solid #c3ccd6; border-radius: 8px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; }
+
+.all-count { margin: 8px 0 0; font-size: 17px; }
+.all-count b { font-size: 24px; color: var(--brand-hi); }
+
+/* Hours to keep free: a small week grid to click or drag over */
+.all-filters { margin-top: 12px; }
+.free-hours { border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px #dfe4ea; }
+.free-hours summary { padding: 10px 14px; cursor: pointer; font-size: 14px; }
+.free-hours summary:focus-visible { outline: 2px solid var(--brand-hi); outline-offset: -2px; border-radius: 10px; }
+.fh-sum { margin-left: 6px; color: var(--muted); font-size: 13px; }
+.fh-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 28px; padding: 0 14px 14px; }
+.fh-grid {
+  display: grid; grid-template-columns: 46px repeat(5, 42px); gap: 2px;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.fh-day, .fh-hour {
+  padding: 2px 0; border: 0; border-radius: 4px; background: none;
+  color: var(--muted); font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.fh-hour { padding-right: 6px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fh-day:hover, .fh-hour:hover { background: #eef3f8; color: var(--ink); }
+.fh-day[aria-pressed="true"], .fh-hour[aria-pressed="true"] { color: var(--bad); }
+.fh-cell { height: 16px; padding: 0; border: 1px solid #d6dbe2; border-radius: 3px; background: #f7f8fa; cursor: pointer; }
+.fh-cell:hover { border-color: #8fa6bd; }
+.fh-cell[aria-pressed="true"] { border-color: #d77a6c; background: repeating-linear-gradient(-45deg, #f2c4bd 0 3px, #fbe4e0 3px 6px); }
+.fh-cell:focus-visible, .fh-day:focus-visible, .fh-hour:focus-visible { outline: 2px solid var(--brand-hi); outline-offset: 1px; }
+.fh-side { flex: 1 1 220px; max-width: 380px; color: var(--muted); font-size: 13px; }
+.fh-side p { margin: 0 0 8px; }
+.fh-side .btn:disabled { opacity: 0.5; cursor: default; }
+
+.all-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; font-weight: 600; }
+.all-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+.all-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
+
+.all-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 12px;
+  padding: 8px 16px 12px;
+}
+.tcard {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px;
+  border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px #dfe4ea;
+}
+.tcard header { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13.5px; }
+.tcard.kept { box-shadow: 0 0 0 2px var(--brand-hi); }
+.kept-tag { padding: 1px 7px; border-radius: 10px; background: var(--brand-hi); color: #fff; font-size: 11px; font-weight: 700; }
+.tcard .facts { margin: 0; color: var(--muted); font-size: 12px; }
+.tcard .use { padding: 6px 10px; font-size: 13px; }
+
+.mini { display: block; width: 100%; height: auto; }
+.mini .col-a { fill: #f5f7fa; }
+.mini .col-b { fill: #eceff4; }
+.mini .rule { stroke: #d6dbe2; stroke-width: 0.5; }
+.mini .day { fill: #5b6673; font: 700 7px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
+.mini .hour { fill: #8a94a0; font: 500 6px system-ui, "Segoe UI", sans-serif; text-anchor: end; }
+
+.all-more { display: flex; justify-content: center; padding: 4px 16px 28px; }
+
+@media (max-width: 760px) {
+  .sem-pick { display: flex; }
+  .fh-grid { grid-template-columns: 46px repeat(5, minmax(0, 1fr)); flex: 1 1 100%; }
+  .fh-cell { height: 24px; } /* big enough for a finger */
+  .all-grid { grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 10px; }
+  .all-count b { font-size: 21px; }
+}

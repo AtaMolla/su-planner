@@ -131,8 +131,10 @@
     if (!r.alts.complete) stats = `${combos} possible section combinations, so only the first ${n.toLocaleString('en')} clash-free timetables are listed. Pick a section in the side panel to narrow them down.`;
     else if (r.alts.combinations > 1) stats = `${combos} possible section combinations, ${r.alts.feasibleCombinations.toLocaleString('en')} with no clash. Sections that meet at the same hours count as one timetable.`;
     if (stats) stats = `<small class="alt-stats">${stats}</small>`;
+    const seeAll = n > 1 || pinned
+      ? `<a class="alt-all" href="schedules.html?sem=${i}">${n > 1 ? `See all ${count} at once` : 'See all timetables'}</a>` : '';
     const help = '<a class="alt-help" href="help.html#times">How it works</a>';
-    return `<div class="note ok alts"><p>✓ ${head}</p>${nav}${actions ? `<span class="alt-acts">${actions}</span>` : ''}${help}${stats}</div>`;
+    return `<div class="note ok alts"><p>✓ ${head}</p>${nav}${actions ? `<span class="alt-acts">${actions}</span>` : ''}${seeAll}${help}${stats}</div>`;
   }
 
   // "A1", "A1/A2" (same hours), "A1 +3"

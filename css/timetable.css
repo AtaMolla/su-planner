@@ -66,6 +66,11 @@
 .alt-nav button:focus-visible, .alt-act:focus-visible { outline: 2px solid var(--brand-hi); outline-offset: 1px; }
 .alt-stats { flex-basis: 100%; color: var(--muted); font-size: 11.5px; }
 .note.alts a.alt-help { font-size: 12.5px; white-space: nowrap; }
+.note.alts a.alt-all {
+  padding: 5px 10px; border-radius: 6px; background: var(--brand-hi); color: #fff;
+  font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.note.alts a.alt-all:hover { background: #164d97; }
 
 .tt-wrap { padding: 6px 16px 24px; overflow-x: auto; }
 .tt-grid { width: 100%; min-width: 600px; border-collapse: collapse; table-layout: fixed; background: #fff; }
