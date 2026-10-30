@@ -485,13 +485,17 @@
 
   // Hovering a course name: a dashed "shadow" for every section it could take (within the day
   // filters), green where it fits, red where it would clash with another course on the grid.
+  // An open course keeps its shadows until every part (lecture, recitation…) has a pick.
   const SHADOWS_PER_CELL = 3;
   function paintShadows() {
     for (const el of table.querySelectorAll('.shadow')) el.remove();
-    const ci = state.hoverCourse;
-    if (ci == null || state.hover) return;
+    const open = state.open != null && !isPlaced(state.open) ? state.open : null;
+    const ci = state.hoverCourse ?? open;
+    if (ci == null) return;
+    const picked = picksOf(ci) || [];
     const here = new Map(); // "d:t" -> [{ s, clash }]
-    for (const cl of courses[ci].classes) {
+    for (const [gi, cl] of courses[ci].classes.entries()) {
+      if (ci === open && picked[gi]) continue; // that part is chosen: only the rest still need shadows
       for (const s of cl.sections) {
         if (isPicked(s) || !visible.has(s.crn)) continue;
         for (const [d, t] of s.slots) {
