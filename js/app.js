@@ -101,6 +101,7 @@
     program: '',       // id from programs.js; '' = no program picked
     entry: '',         // admit term whose curriculum applies, e.g. '202501'
     hover: null,       // section under the pointer
+    hoverCourse: null, // course whose name is under the pointer: its sections show as shadows
     justPlaced: null,  // course to animate on the next render
   };
 
@@ -482,12 +483,42 @@
     }
   }
 
+  // Hovering a course name: a dashed "shadow" for every section it could take (within the day
+  // filters), green where it fits, red where it would clash with another course on the grid.
+  const SHADOWS_PER_CELL = 3;
+  function paintShadows() {
+    for (const el of table.querySelectorAll('.shadow')) el.remove();
+    const ci = state.hoverCourse;
+    if (ci == null || state.hover) return;
+    const here = new Map(); // "d:t" -> [{ s, clash }]
+    for (const cl of courses[ci].classes) {
+      for (const s of cl.sections) {
+        if (isPicked(s) || !visible.has(s.crn)) continue;
+        for (const [d, t] of s.slots) {
+          const clash = occ[d][t].some((o) => o.ci !== ci);
+          here.set(`${d}:${t}`, [...(here.get(`${d}:${t}`) || []), { s, clash }]);
+        }
+      }
+    }
+    for (const [key, list] of here) {
+      const [d, t] = key.split(':').map(Number);
+      const clash = list.every((x) => x.clash);
+      const shown = list.slice(0, SHADOWS_PER_CELL).map((x) => esc(x.s.label));
+      const more = list.length - shown.length;
+      const el = document.createElement('div');
+      el.className = `shadow${clash ? ' clash' : ''}`;
+      el.innerHTML = shown.map((l) => `<span>${l}</span>`).join('') + (more ? `<span class="more">+${more} more</span>` : '');
+      cells[d][t].append(el);
+    }
+  }
+
   function render() {
     computeOccupancy();
     renderGrid();
     if (state.open != null) renderBody(state.open);
     renderHeads();
     paintHover();
+    paintShadows();
   }
 
   // ---------- Actions ----------
@@ -620,16 +651,23 @@
       }
     });
 
-    const hoverTo = (s) => { if (state.hover !== s) { state.hover = s; paintHover(); } };
-    list.addEventListener('mouseover', (e) => {
+    // A section card previews that one section; a course name shows all its sections as shadows.
+    const hoverTo = (s, ci = null) => {
+      if (state.hover === s && state.hoverCourse === ci) return;
+      state.hover = s;
+      state.hoverCourse = ci;
+      paintHover();
+      paintShadows();
+    };
+    const target = (e) => {
       const card = e.target.closest('.section');
-      hoverTo(card ? byCrn.get(card.dataset.crn) : null);
-    });
+      if (card) return [byCrn.get(card.dataset.crn), null];
+      const head = e.target.closest('.course-head');
+      return [null, head ? Number(head.parentElement.dataset.ci) : null];
+    };
+    list.addEventListener('mouseover', (e) => hoverTo(...target(e)));
     list.addEventListener('mouseleave', () => hoverTo(null));
-    list.addEventListener('focusin', (e) => {
-      const card = e.target.closest('.section');
-      if (card) hoverTo(byCrn.get(card.dataset.crn));
-    });
+    list.addEventListener('focusin', (e) => hoverTo(...target(e)));
     list.addEventListener('focusout', () => hoverTo(null));
 
     // Timetable blocks: click to edit the course, × to remove a section.

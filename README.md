@@ -59,6 +59,8 @@ your entry year (or the newest year they have, if they didn't exist yet).
 - Open a course and tick one section from each group (lecture, recitation, lab…).
   Half-picked courses show as dashed placeholders; a complete course lands on the grid in its own colour.
 - Hovering a section previews it: green = free, red = clash. Section cards also say what they clash with.
+- Hovering a course name in the list shows dashed shadows of all its sections (within the day
+  filters) on the grid: green where a section fits, red where it would clash.
 - Click a block on the grid to edit that course; × removes a section and opens the course so you can pick another.
 - Clashing hours are tinted red and counted in the bar under the grid. Sections with no fixed time are listed there too.
 - **Copy CRNs** copies lines like `CS201 - A: 10190`. **Clear** empties the schedule.
