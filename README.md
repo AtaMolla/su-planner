@@ -181,6 +181,18 @@ When a newer Spring term is published, download it and point the pages at it
 python tools/build_schedule.py 202702
 ```
 
+## Update the room list
+
+The Room availability page (`rooms.html`) shows which rooms in FASS, FENS, SBS and UC are free
+each hour. A room counts as busy when a class meets there (from `data/courses.js` and
+`data/schedule-*.js`); exams, events and one-off bookings aren't included. The rooms themselves
+(type, seats, equipment) come from SU's public room search
+(`suis.sabanciuniv.edu/HbbmInst/SABANCI_ROOMS.main_request`). To re-read them (under a minute):
+
+```
+python tools/build_rooms.py
+```
+
 ## Update the degree requirements
 
 `data/requirements.js` is read from SU's public degree pages
@@ -213,6 +225,7 @@ python tools/build_requirements.py --prereqs-only
 
 - `index.html`, `plan.html`, `timetable.html`, `prereq.html`: the four tools
 - `schedules.html`, `js/schedules.js`, `css/schedules.css`: the All timetables page
+- `rooms.html`, `js/rooms.js`, `css/rooms.css`, `data/rooms.js`: the Room availability page
 - `help.html`, `css/help.css`, `img/help/`: the How to use page and its screenshots
 - `tools/bump_version.py`: stamps the pages' CSS/JS/data links with a new `?v=` so browsers
   don't mix old and new files; run it before uploading changed CSS, JS or data

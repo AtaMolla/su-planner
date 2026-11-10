@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SU Planner – Room availability</title>
+  <meta name="description" content="Find a free classroom at Sabancı University for any hour of the week.">
+  <link rel="stylesheet" href="css/style.css?v=202611101541">
+  <link rel="stylesheet" href="css/rooms.css?v=202611101541">
+</head>
+<body class="rooms-page">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <button id="menu-toggle" class="icon-btn" type="button" aria-label="Show or hide the room list" aria-controls="sidebar">
+      <svg class="i"><use href="#i-menu"/></svg>
+    </button>
+    <h1 class="brand">SU Planner</h1>
+    <nav class="page-tabs" aria-label="Pages">
+      <a href="index.html"><span class="long">Weekly schedule</span><span class="short">Week</span></a>
+      <a href="plan.html"><span class="long">4-year plan</span><span class="short">Plan</span></a>
+      <a href="timetable.html"><span class="long">Semester times</span><span class="short">Times</span></a>
+      <a href="schedules.html"><span class="long">All timetables</span><span class="short">All</span></a>
+      <a href="prereq.html"><span class="long">Prerequisites</span><span class="short">Prereqs</span></a>
+      <a href="rooms.html" aria-current="page"><span class="long">Room availability</span><span class="short">Rooms</span></a>
+      <a href="help.html"><span class="long">How to use</span><span class="short">Help</span></a>
+    </nav>
+  </header>
+
+  <aside id="sidebar" aria-label="Find a free room">
+    <div class="side-scroll">
+      <div id="term-pick" class="seg" role="group" aria-label="Semester"></div>
+
+      <div class="side-label">When</div>
+      <div id="day-pick" class="day-chips wide" role="group" aria-label="Day"></div>
+      <div class="when-row">
+        <select id="from" aria-label="From"></select>
+        <span>to</span>
+        <select id="to" aria-label="To"></select>
+        <button id="now-btn" class="now-btn" type="button" title="Jump to the current hour">
+          <svg class="i"><use href="#i-clock"/></svg>Now
+        </button>
+      </div>
+
+      <div class="side-label">Building</div>
+      <div id="bld-pick" class="day-chips wide" role="group" aria-label="Buildings"></div>
+
+      <div class="side-label">Room</div>
+      <div class="opt-row">
+        <select id="kind" aria-label="Room type">
+          <option value="teach">Classrooms &amp; halls</option>
+          <option value="lab">Labs</option>
+          <option value="all">Every room</option>
+        </select>
+        <label class="seats">at least <input id="seats" type="number" min="0" step="5" inputmode="numeric" placeholder="0"> seats</label>
+      </div>
+      <div id="need-pick" class="need-chips" role="group" aria-label="Room must have"></div>
+      <input id="find" class="find" type="search" placeholder="Room code or name, e.g. G077" aria-label="Find a room by code or name">
+
+      <div id="room-list" class="room-list" aria-live="polite"></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <section class="rm-top">
+      <div id="rm-head" class="rm-head"></div>
+    </section>
+    <div class="rm-wrap"><table id="rm-grid" class="rm-grid"></table></div>
+    <p id="rm-foot" class="rm-foot"></p>
+  </main>
+
+  <script src="data/courses.js?v=202611101541"></script>
+  <script src="data/schedule-202602.js?v=202611101541"></script>
+  <script src="data/rooms.js?v=202611101541"></script>
+  <script src="js/rooms.js?v=202611101541"></script>
+</body>
+</html>
