@@ -144,15 +144,6 @@ your entry year (or the newest year they have, if they didn't exist yet).
   sections as your picks and opens it in Semester times; the card you picked is marked.
 - Semester times links here ("See all 80 at once").
 
-### Shared courses (`overlap.html`)
-
-- A program × program grid: each square counts the **required courses** two programs share for the
-  chosen entry year (university courses left out, since every program requires them); the diagonal
-  is each program's own count. Your program's row is highlighted.
-- Click a square (or pick two programs) to list the courses only one side needs and the ones both
-  need, with how many required courses a double major in the second program would still add.
-- Below: every course two or more programs require, and which programs.
-
 ### How to use (`help.html`)
 
 - Short steps for every page with real screenshots (`img/help/*.webp`) whose numbered markers match
