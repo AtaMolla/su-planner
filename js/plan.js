@@ -12,12 +12,16 @@
   const OFFER = window.COURSE_DATA || { courses: [] };
   const OFFERED = new Map(OFFER.courses.map((c) => [c.code, c.name]));
   const CURRENT_TERM = OFFER.term || '';
-  const SEMESTERS = 8;        // Fall and Spring of years 1–4: plan entries 0–7
-  const SUMMERS = 3;          // summers after years 1–3: plan entries 8–10
-  const TERMS = SEMESTERS + SUMMERS;
-  const isSummer = (i) => i >= SEMESTERS;
+  const SEMESTERS = S.PLAN.semesters; // Fall and Spring of years 1–4: plan entries 0–7
+  const SUMMERS = S.PLAN.summers;     // summers after years 1–3: plan entries 8–10
+  const TERMS = SEMESTERS + SUMMERS;  // entries 11 and up: extra semesters added with "+" (Year 5…)
+  const isExtra = (i) => i >= TERMS;
+  const isSummer = (i) => i >= SEMESTERS && !isExtra(i);
+  // Fall/Spring number in time order: 0–7, then 8, 9… for the extra semesters.
+  const ordinal = (i) => (isExtra(i) ? SEMESTERS + (i - TERMS) : i);
   // Order in time: the summer after Year k sits between that year's Spring and the next Fall.
-  const position = (i) => (isSummer(i) ? 2 * (i - SEMESTERS) + 1.5 : i);
+  const position = (i) => (isSummer(i) ? 2 * (i - SEMESTERS) + 1.5 : ordinal(i));
+  const emptyPlan = (extra = 0) => Array.from({ length: TERMS + extra }, () => []);
   const KIND_LABEL = {
     required: 'Required', core: 'Core', area: 'Area', university: 'University',
     free: 'Free', faculty: 'Faculty', other: 'Other',
@@ -60,7 +64,7 @@
     program: '',
     entry: '',
     years: [],
-    plan: Array.from({ length: TERMS }, () => []), // course codes per semester, then per summer
+    plan: emptyPlan(), // course codes per semester, then per summer, then extra semesters
     target: 0, // semester that "+" adds to
     query: '',
     onlyCat: '', // list only this group's courses (after "choose a course" on a placeholder)
@@ -108,7 +112,9 @@
   }
 
   function savePlan() {
-    try { localStorage.setItem(S.KEYS.plan, JSON.stringify({ semesters: state.plan })); } catch { /* not saved */ }
+    const out = { semesters: state.plan };
+    if (state.autoYear) out.autoYear = true; // Year 5 was added for a double major
+    try { localStorage.setItem(S.KEYS.plan, JSON.stringify(out)); } catch { /* not saved */ }
   }
 
   // Returns whether a plan was saved before (even an emptied one).
@@ -116,8 +122,9 @@
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(S.KEYS.plan) || 'null'); } catch { saved = null; }
     if (!Array.isArray(saved?.semesters)) return false;
+    state.autoYear = saved.autoYear === true;
     const seen = new Set();
-    state.plan = Array.from({ length: TERMS }, (_, i) => (saved.semesters[i] || [])
+    state.plan = Array.from({ length: TERMS + S.planExtraCount(saved.semesters) }, (_, i) => (saved.semesters[i] || [])
       .filter((c) => typeof c === 'string')
       .map(S.canonicalCode) // e.g. an old "PROJ 302" becomes "PROJ 201"
       .filter((c) => !seen.has(c) && seen.add(c)));
@@ -130,11 +137,12 @@
   function semesterTerm(i) {
     const start = Number((state.entry || CURRENT_TERM || '202601').slice(0, 4));
     if (isSummer(i)) return `${start + (i - SEMESTERS)}03`;
-    return `${start + Math.floor(i / 2)}${i % 2 ? '02' : '01'}`;
+    const k = ordinal(i);
+    return `${start + Math.floor(k / 2)}${k % 2 ? '02' : '01'}`;
   }
   const semesterTitle = (i) => (isSummer(i)
     ? `Summer after Year ${i - SEMESTERS + 1}`
-    : `Year ${Math.floor(i / 2) + 1} · ${i % 2 ? 'Spring' : 'Fall'}`);
+    : `Year ${Math.floor(ordinal(i) / 2) + 1} · ${ordinal(i) % 2 ? 'Spring' : 'Fall'}`);
   function semesterStatus(i) {
     const term = semesterTerm(i);
     if (!CURRENT_TERM) return 'future';
@@ -254,9 +262,10 @@
 
   // Earliest semester (0-based) by course level: 1xx/2xx from Year 2, 3xx from Year 2 Spring,
   // 4xx from Year 3 Spring, graduation projects (49x) in Year 4.
-  function earliestSemester(code) {
+  // Earliest Fall/Spring (0 = Year 1 Fall) for a course; `last` = the plan's last one.
+  function earliestSemester(code, last = SEMESTERS - 1) {
     const num = courseNumber(code);
-    if (num.startsWith('49')) return 6;
+    if (num.startsWith('49')) return last - 1; // graduation projects: the final year
     const level = Number(num[0]);
     if (level >= 4) return 5;
     if (level === 3) return 3;
@@ -266,8 +275,13 @@
   // A suggested 8-semester plan for the program: university courses in Year 1, required
   // courses after it in prerequisite order, and elective placeholders to reach each minimum,
   // keeping semesters at 15–20 SU credits where possible.
-  function suggestPlan() {
-    const sems = Array.from({ length: TERMS }, () => []);
+  // `extra` = Fall/Spring semesters after Year 4 (plan entries from TERMS on); the plan
+  // spreads over all of them, so a five-year double major stays within 15–20 credits.
+  function suggestPlan(extra = 0) {
+    const sems = emptyPlan(extra);
+    const N = SEMESTERS + extra;                                     // Fall/Spring semesters in the plan
+    const at = (k) => (k < SEMESTERS ? k : TERMS + (k - SEMESTERS)); // k-th Fall/Spring -> plan entry
+    const span = (from) => Array.from({ length: Math.max(0, N - from) }, (_, j) => at(from + j));
     const load = (s) => sems[s].reduce((t, code) => t + info(code).su, 0);
     const placed = new Map(); // base code -> semester
     const put = (code, s) => { sems[s].push(code); placed.set(baseCode(code), s); };
@@ -311,7 +325,7 @@
     // with no course in the plan can't be helped, so they don't hold a course back.
     const ready = (code, s) => prereqOf(code).every((g) => {
       const mine = g.filter((p) => inPlan.has(baseCode(p)));
-      return !mine.length || mine.some((p) => placed.has(baseCode(p)) && placed.get(baseCode(p)) < s);
+      return !mine.length || mine.some((p) => placed.has(baseCode(p)) && position(placed.get(baseCode(p))) < position(s));
     });
     // Courses that many others wait on go first.
     const depth = new Map();
@@ -328,11 +342,12 @@
     // SU credits of required courses per semester, leaving room for electives
     // (more when a double major or minor adds required courses).
     const queueSU = queue.reduce((t, c) => t + info(c).su, 0);
-    const REQUIRED_PER_SEMESTER = Math.max(12, Math.ceil(queueSU / (SEMESTERS - 2)) + 3);
+    const REQUIRED_PER_SEMESTER = Math.max(12, Math.ceil(queueSU / (N - 2)) + 3);
     let left = [...queue];
-    for (let s = 2; s < SEMESTERS && left.length; s++) {
+    for (let k = 2; k < N && left.length; k++) {
+      const s = at(k);
       const candidates = left
-        .filter((c) => earliestSemester(c) <= s && ready(c, s) && !(semesterStatus(s) === 'now' && !isOffered(c))
+        .filter((c) => earliestSemester(c, N - 1) <= k && ready(c, s) && !(semesterStatus(s) === 'now' && !isOffered(c))
           && (!T || T.offeredIn(c, semesterTerm(s)) !== false)) // not in a season it doesn't run
         .sort((a, b) => chain(b) - chain(a) || byCode(a, b));
       let taken = 0;
@@ -349,9 +364,9 @@
     // preferring one after their prerequisites and without a clash (the plan flags the rest).
     for (const code of left) {
       const seasonOk = [];
-      for (let s = SEMESTERS - 1; s >= 2; s--) if (!T || T.offeredIn(code, semesterTerm(s)) !== false) seasonOk.push(s);
+      for (const s of span(2).reverse()) if (!T || T.offeredIn(code, semesterTerm(s)) !== false) seasonOk.push(s);
       const s = seasonOk.find((x) => ready(code, x) && (!T || T.fits(code, sems[x], semesterTerm(x))))
-        ?? seasonOk.find((x) => ready(code, x)) ?? seasonOk[0] ?? SEMESTERS - 1;
+        ?? seasonOk.find((x) => ready(code, x)) ?? seasonOk[0] ?? at(N - 1);
       put(code, s);
     }
 
@@ -403,22 +418,22 @@
     }
     const slots = [...group.university, ...group.core, ...group.extra, ...group.area, ...group.free, ...group.topUp];
 
-    // Spread them over Years 2–4 so each semester lands between 15 and 20 credits.
-    for (let s = 2; s < SEMESTERS; s++) {
+    // Spread them from Year 2 to the last year so each semester lands between 15 and 20 credits.
+    for (let k = 2; k < N; k++) {
+      const s = at(k);
       let rest = slots.length * SLOT_SU;
-      for (let t = s; t < SEMESTERS; t++) rest += load(t);
-      const target = Math.min(LOAD_MAX, Math.max(LOAD_MIN, Math.ceil(rest / (SEMESTERS - s))));
+      for (const t of span(k)) rest += load(t);
+      const target = Math.min(LOAD_MAX, Math.max(LOAD_MIN, Math.ceil(rest / (N - k))));
       while (slots.length && load(s) < target && load(s) + SLOT_SU <= LOAD_MAX) sems[s].push(slots.shift());
     }
     while (slots.length) {
-      let s = 2;
-      for (let t = 3; t < SEMESTERS; t++) if (load(t) < load(s)) s = t;
+      const s = span(2).reduce((a, b) => (load(b) < load(a) ? b : a));
       sems[s].push(slots.shift());
     }
 
     // Even out: no semester under 15 while another can spare a placeholder; failing
     // that, add a free elective (a little over the total beats a light semester).
-    const later = Array.from({ length: SEMESTERS - 2 }, (_, k) => k + 2);
+    const later = span(2);
     for (let guard = 0; guard < 40; guard++) {
       const low = later.find((s) => load(s) < LOAD_MIN);
       if (low == null) break;
@@ -434,16 +449,45 @@
         break;
       }
     }
+    // Overloaded semester left? Move an elective placeholder to the lightest semester that has room.
+    for (let guard = 0; guard < 40; guard++) {
+      const heavy = later.find((s) => load(s) > LOAD_MAX && sems[s].some(isSlot));
+      if (heavy == null) break;
+      const to = later.filter((t) => t !== heavy && load(t) + SLOT_SU <= LOAD_MAX)
+        .sort((x, y) => load(x) - load(y))[0];
+      if (to == null) break;
+      const slot = [...sems[heavy]].reverse().find(isSlot);
+      sems[heavy] = sems[heavy].filter((c) => c !== slot);
+      sems[to].push(slot);
+    }
     return sems;
+  }
+
+  // A double major gets a fifth year (Year 5 Fall + Spring) so no semester is overloaded.
+  // That year is marked as added for the double major, so it goes again if the double major does.
+  const DM_EXTRA = 2;
+  const hasDM = () => extras.some((x) => x.kind === 'dm');
+  function suggestedExtra() {
+    let extra = state.plan.length - TERMS;
+    if (!hasDM() && state.autoYear) extra = Math.max(0, extra - DM_EXTRA);
+    return hasDM() ? Math.max(extra, DM_EXTRA) : extra;
   }
 
   function applySuggestion() {
     if (!cats) return;
-    state.plan = suggestPlan();
+    const before = state.plan.length - TERMS;
+    const extra = suggestedExtra();
+    if (hasDM() && extra > before) state.autoYear = true;
+    else if (!hasDM()) state.autoYear = false;
+    state.plan = suggestPlan(extra);
     savePlan();
     render();
-    const heavy = extras.some((x) => x.kind === 'dm') && state.plan.some((s) => s.reduce((t, c) => t + info(c).su, 0) > LOAD_MAX);
-    toast(`Suggested plan for ${planName()}.${heavy ? ' A double major needs some semesters over 20 credits; they are marked.' : ' Change anything you like.'}`, heavy);
+    const heavy = state.plan.some((s, i) => !isSummer(i) && s.reduce((t, c) => t + info(c).su, 0) > LOAD_MAX);
+    const years = 4 + Math.ceil(extra / 2);
+    const note = heavy ? ` Some semesters are over ${LOAD_MAX} credits; they are marked.`
+      : extra > before && hasDM() ? ` A double major takes ${years} years here, so no semester goes over ${LOAD_MAX} credits.`
+        : ' Change anything you like.';
+    toast(`Suggested plan for ${planName()}.${note}`, heavy);
   }
 
   // "Economics + Finance minor" for messages.
@@ -454,9 +498,10 @@
 
   function askSuggestion() {
     const name = planName();
-    $('#suggest-text').textContent = state.plan.some((s) => s.length)
+    const fifth = suggestedExtra() > state.plan.length - TERMS ? ' It adds a fifth year so no semester goes over 20 credits.' : '';
+    $('#suggest-text').textContent = (state.plan.some((s) => s.length)
       ? `This replaces your current plan with a suggested one for ${name}: university courses in Year 1, required courses in prerequisite order, and placeholders for electives.`
-      : `Fill your plan with a suggested one for ${name}.`;
+      : `Fill your plan with a suggested one for ${name}.`) + fifth;
     $('#suggest-dialog').showModal();
   }
 
@@ -677,8 +722,8 @@
     if (!T || !sem.some((c) => !isSlot(c))) return '';
     const r = T.checkSemester(sem, semesterTerm(i), new Map(), { max: 1 }); // only needs to know if one exists
     return r.pairs.length
-      ? `<a class="tclash" href="timetable.html?sem=${i}" title="${esc(r.pairs.map((p) => (p.a === p.b ? p.a : `${p.a} + ${p.b}`)).join(', '))} overlap in every section choice">Time clash</a>`
-      : `<a class="tlink" href="timetable.html?sem=${i}" title="See this semester on a weekly timetable">Times</a>`;
+      ? `<a class="tclash" href="timetable.html?sem=${ordinal(i)}" title="${esc(r.pairs.map((p) => (p.a === p.b ? p.a : `${p.a} + ${p.b}`)).join(', '))} overlap in every section choice">Time clash</a>`
+      : `<a class="tlink" href="timetable.html?sem=${ordinal(i)}" title="See this semester on a weekly timetable">Times</a>`;
   }
 
   function renderSemesters(a, issues) {
@@ -708,7 +753,7 @@
         if (!isSummer(i)) {
           const offered = T && !S.isArrangedCourse(code) ? T.offeredIn(code, semesterTerm(i)) : null;
           if (S.isSummerCourse(code)) warn = '<span class="pc-warn">summer course: move it to a summer below</span>';
-          else if (offered === false) warn = `<span class="pc-warn">not on the ${i % 2 ? 'Spring' : 'Fall'} schedule; runs in ${i % 2 ? 'Fall' : 'Spring'}</span>`;
+          else if (offered === false) warn = `<span class="pc-warn">not on the ${ordinal(i) % 2 ? 'Spring' : 'Fall'} schedule; runs in ${ordinal(i) % 2 ? 'Fall' : 'Spring'}</span>`;
           else if (status === 'now' && !isOffered(code) && !S.isArrangedCourse(code)) warn = `<span class="pc-warn">not offered in ${esc(S.termName(CURRENT_TERM))}</span>`;
         }
         const iss = issues.get(code) || { late: [], missing: [] };
@@ -733,6 +778,7 @@
       return `
         <article class="sem ${status}${target ? ' target' : ''}${isSummer(i) ? ' summer' : ''}" data-sem="${i}">
           <header class="sem-head">
+            ${isExtra(i) && i === state.plan.length - 1 ? `<button type="button" class="sem-del" title="Remove this semester" aria-label="Remove ${semesterTitle(i)}">×</button>` : ''}
             <button type="button" class="sem-pick" aria-pressed="${target}" title="Add courses from the list to this semester">
               <span class="sem-title">${semesterTitle(i)}</span>
               <span class="sem-term">${S.termName(semesterTerm(i))}${status === 'now' ? ' · this term' : ''}</span>
@@ -743,9 +789,16 @@
           ${sem.length ? '' : `<p class="sem-empty">${empty}</p>`}
         </article>`;
     });
+    const extraCards = cards.slice(TERMS);
+    const canAdd = extraCards.length < S.PLAN.maxExtra;
+    const next = state.plan.length; // the entry a new semester would get
+    const addCard = canAdd ? `<button type="button" class="sem-add" title="For plans longer than four years, such as a double major">
+        <span class="plus" aria-hidden="true">+</span>
+        <span><b>Add a semester</b><small>${semesterTitle(next)} · ${S.termName(semesterTerm(next))}</small></span></button>` : '';
     $('#semesters').innerHTML = `<div class="sem-grid">${cards.slice(0, SEMESTERS).join('')}</div>
+      <div class="sem-extra-row">${extraCards.join('')}${addCard}</div>
       <div class="summer-label">Summers <small>internships and summer courses; no 15–20 credit rule</small></div>
-      <div class="summer-row">${cards.slice(SEMESTERS).join('')}</div>`;
+      <div class="summer-row">${cards.slice(SEMESTERS, TERMS).join('')}</div>`;
   }
 
   function render() {
@@ -841,7 +894,7 @@
     S.mountExtras($('#extras'), state.program, extrasChanged);
 
     // Start on the current term if it falls inside the plan.
-    const now = Array.from({ length: SEMESTERS }, (_, i) => i).find((i) => semesterStatus(i) === 'now');
+    const now = state.plan.map((_, i) => i).find((i) => !isSummer(i) && semesterStatus(i) === 'now');
     if (now != null && !state.plan[state.target]?.length) state.target = now;
 
     renderCatalog();
@@ -865,6 +918,31 @@
     render();
     if (!cats) return;
     if (state.plan.some((s) => s.length)) askSuggestion(); else applySuggestion();
+  }
+
+  // "+ Add a semester": one more Fall/Spring after the last one (Year 5 and on).
+  function addSemester() {
+    if (state.plan.length - TERMS >= S.PLAN.maxExtra) return;
+    state.plan.push([]);
+    const i = state.plan.length - 1;
+    state.target = i;
+    savePlan();
+    render();
+    toast(`Added ${semesterTitle(i)}. Courses you add from the list go there.`);
+    document.querySelector(`.sem[data-sem="${i}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  // × on the last extra semester: its courses go back to the list.
+  function removeSemester() {
+    const i = state.plan.length - 1;
+    if (!isExtra(i)) return;
+    const title = semesterTitle(i);
+    const n = state.plan[i].length;
+    state.plan.pop();
+    if (state.plan.length - TERMS < DM_EXTRA) state.autoYear = false; // the extra year is the student's own call now
+    if (state.target >= state.plan.length) state.target = state.plan.length - 1 >= TERMS ? state.plan.length - 1 : SEMESTERS - 1;
+    savePlan();
+    render();
+    toast(n ? `Removed ${title}; its ${n === 1 ? 'course is' : `${n} courses are`} back in the list` : `Removed ${title}`);
   }
 
   // "choose a course" on a placeholder: aim at its semester and list only its group's courses.
@@ -900,7 +978,7 @@
     });
     $('#clear-dialog form').addEventListener('submit', (e) => {
       if (e.submitter?.value !== 'clear') return;
-      state.plan = Array.from({ length: TERMS }, () => []);
+      state.plan = emptyPlan(state.plan.length - TERMS); // empty, but keep the extra semesters
       savePlan();
       render();
       toast('Plan cleared');
@@ -929,6 +1007,8 @@
     semesters.addEventListener('click', (e) => {
       const x = e.target.closest('.pc-x');
       if (x) { remove(x.closest('.pc').dataset.code); return; }
+      if (e.target.closest('.sem-add')) { addSemester(); return; }
+      if (e.target.closest('.sem-del')) { removeSemester(); return; }
       const sem = e.target.closest('.sem');
       const pick = e.target.closest('.slot-pick');
       if (pick && sem) { choosePlaceholder(pick.dataset.cat, Number(sem.dataset.sem)); return; }

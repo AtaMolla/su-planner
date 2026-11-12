@@ -69,6 +69,8 @@ your entry year (or the newest year they have, if they didn't exist yet).
 ### 4-year plan (`plan.html`)
 
 - Eight semesters (Fall and Spring of years 1–4), named from the year you started; the current term is marked.
+- "+ Add a semester" adds up to four more (Year 5 Fall, Year 5 Spring, …) for plans longer than four years, such as a double major; × on the last one removes it and sends its courses back to the list. They are saved after the summers (plan entries 11 and up), and the Semester times and All timetables pages list them too.
+- With a double major, the suggested plan adds Year 5 by itself and spreads the courses over ten semesters, so no semester goes over 20 SU (a few pairs, such as PSIR or VACD with an engineering major, still end up with a semester at 21). Removing the double major and suggesting again takes that year away.
 - Three **summers** (after years 1–3) below them, for summer internships: every x95 internship
   (CS 395, IE 395…) and courses SU names "Summer Internship" (MGMT 300, PROJ 303). The suggested
   plan puts x95 internships in the summer after Year 3 and other summer internships in the

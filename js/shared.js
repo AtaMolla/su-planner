@@ -21,6 +21,22 @@ window.SUShared = (() => {
   // Requirement pages sometimes add a letter ("CIP 101N") to a course offered as "CIP 101".
   const baseCode = (code) => code.replace(/[A-Z]+$/, '');
 
+  // Saved plan layout (localStorage KEYS.plan = { semesters: [...] }):
+  // entries 0–7 = Fall/Spring of years 1–4, 8–10 = summers after years 1–3,
+  // 11 and up = extra semesters (Year 5 Fall, Year 5 Spring, …) added with "+".
+  const PLAN = { semesters: 8, summers: 3, maxExtra: 4 };
+  const planExtraCount = (semesters) => Math.max(0, Math.min(PLAN.maxExtra,
+    (Array.isArray(semesters) ? semesters.length : 0) - PLAN.semesters - PLAN.summers));
+  // The Fall/Spring semesters of a saved plan in time order (summers left out):
+  // index k = the k-th regular semester, so extras follow Year 4 Spring.
+  function regularSemesters(semesters) {
+    const list = Array.isArray(semesters) ? semesters : [];
+    const out = [];
+    for (let i = 0; i < PLAN.semesters; i++) out.push(list[i] || []);
+    for (let k = 0; k < planExtraCount(list); k++) out.push(list[PLAN.semesters + PLAN.summers + k] || []);
+    return out;
+  }
+
   // Codes that are really another course (PROJ 302 isn't a separate class: it is PROJ 201).
   // Saved plans from before this was known are converted when they load.
   const ALIASES = { 'PROJ 302': 'PROJ 201' };
@@ -218,7 +234,7 @@ window.SUShared = (() => {
   }
 
   return {
-    REQUIREMENTS, PROGRAMS, KEYS, esc, fold, baseCode, canonicalCode, isSummerCourse, isArrangedCourse, programById, termsFor, requirementsFor,
+    REQUIREMENTS, PROGRAMS, KEYS, PLAN, planExtraCount, regularSemesters, esc, fold, baseCode, canonicalCode, isSummerCourse, isArrangedCourse, programById, termsFor, requirementsFor,
     totalsFor, overlaysFor, categoryKind, categoryRank, minLabel, sortedCategories, termName,
     fillProgramOptions, readPicks, resolvePicks, readExtras, extraPrograms, extraTagsFor, mountExtras,
   };

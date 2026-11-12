@@ -6,7 +6,6 @@
   const S = window.SUShared;
   const T = window.SUTimes;
   const { esc } = S;
-  const SEMESTERS = 8;
   const PINS_KEY = 'su-planner:times-pins'; // shared with the Semester times page
   const PAGE = 24; // timetables drawn at a time
   const PALETTE = [
@@ -31,12 +30,13 @@
     try {
       const saved = JSON.parse(localStorage.getItem(S.KEYS.plan) || 'null');
       const seen = new Set();
-      state.plan = Array.from({ length: SEMESTERS }, (_, i) => (saved?.semesters?.[i] || [])
+      state.plan = S.regularSemesters(saved?.semesters).map((sem) => sem
         .filter((c) => typeof c === 'string').map(S.canonicalCode)
         .filter((c) => !seen.has(c) && seen.add(c)));
     } catch {
-      state.plan = Array.from({ length: SEMESTERS }, () => []);
+      state.plan = S.regularSemesters(null);
     }
+    if (state.sel >= state.plan.length) state.sel = 0; // an extra semester was removed on the plan page
   }
   function readPins() {
     try { return JSON.parse(localStorage.getItem(PINS_KEY) || '{}') || {}; } catch { return {}; }
@@ -374,8 +374,8 @@
   function firstSemester() {
     const params = new URLSearchParams(location.search);
     const asked = Number(params.get('sem'));
-    if (params.has('sem') && Number.isInteger(asked) && asked >= 0 && asked < SEMESTERS) return asked;
-    const now = Array.from({ length: SEMESTERS }, (_, i) => i).find((i) => semesterTerm(i) === T.fall?.term);
+    if (params.has('sem') && Number.isInteger(asked) && asked >= 0 && asked < state.plan.length) return asked;
+    const now = state.plan.map((_, i) => i).find((i) => semesterTerm(i) === T.fall?.term);
     if (now != null && state.plan[now].length) return now;
     const filled = state.plan.findIndex((s) => s.length);
     return filled >= 0 ? filled : 0;

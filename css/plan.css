@@ -104,6 +104,34 @@
   .sem-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Extra semesters (Year 5…) and the "+ Add a semester" button, laid out like the years above */
+.sem-extra-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (min-width: 1380px) { .sem-extra-row { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .sem-extra-row { grid-template-columns: minmax(0, 1fr); } }
+.sem-extra-row > .sem { align-self: stretch; }
+.sem-add {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px;
+  border: 2px dashed #b3c2d3; border-radius: 12px; background: transparent;
+  color: var(--brand); text-align: left; cursor: pointer;
+}
+.sem-add:hover { border-color: var(--brand-hi); background: #f3f7fd; }
+.sem-add:focus-visible { outline: 2px solid var(--brand-hi); outline-offset: 2px; }
+.sem-add .plus {
+  display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--brand-hi); color: #fff; font-size: 24px; font-weight: 600; line-height: 1;
+}
+.sem-add b { display: block; font-size: 14.5px; }
+.sem-add small { color: var(--muted); font-size: 12px; }
+.sem { position: relative; }
+.sem-del {
+  position: absolute; top: -9px; right: -9px; z-index: 1;
+  width: 24px; height: 24px; padding: 0; border: 1.5px solid #c3ccd6; border-radius: 50%;
+  background: #fff; color: #5b6673; cursor: pointer; font-size: 16px; line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.sem-del:hover { border-color: var(--bad); background: var(--bad); color: #fff; }
+.sem-del:focus-visible { outline: 2px solid var(--brand-hi); outline-offset: 1px; }
+
 .sem {
   display: flex; flex-direction: column; min-height: 170px;
   border: 2px solid transparent; border-radius: 12px;
@@ -178,7 +206,7 @@
 
 /* ---------- Print: just the plan ---------- */
 @media print {
-  .topbar, #sidebar, #toast, .pc-x, .missing, .sem-empty { display: none !important; }
+  .topbar, #sidebar, #toast, .pc-x, .missing, .sem-empty, .sem-add, .sem-del { display: none !important; }
   html, body { height: auto; }
   body { display: block; overflow: visible; background: #fff; }
   .plan-page main { overflow: visible; padding: 0; background: #fff; }

@@ -6,7 +6,6 @@
   const S = window.SUShared;
   const T = window.SUTimes;
   const { esc } = S;
-  const SEMESTERS = 8;
   const PINS_KEY = 'su-planner:times-pins';
   const PALETTE = [
     '#2f6fb5', '#8e5a9b', '#c2571a', '#2b8a6e', '#a23b5a', '#5a6acf', '#7a6a2e',
@@ -25,12 +24,13 @@
     try {
       const saved = JSON.parse(localStorage.getItem(S.KEYS.plan) || 'null');
       const seen = new Set();
-      state.plan = Array.from({ length: SEMESTERS }, (_, i) => (saved?.semesters?.[i] || [])
+      state.plan = S.regularSemesters(saved?.semesters).map((sem) => sem
         .filter((c) => typeof c === 'string').map(S.canonicalCode) // an old "PROJ 302" is PROJ 201
         .filter((c) => !seen.has(c) && seen.add(c)));
     } catch {
-      state.plan = Array.from({ length: SEMESTERS }, () => []);
+      state.plan = S.regularSemesters(null);
     }
+    if (state.sel >= state.plan.length) state.sel = 0; // an extra semester was removed on the plan page
   }
   function loadPins() {
     try { state.pins = JSON.parse(localStorage.getItem(PINS_KEY) || '{}') || {}; } catch { state.pins = {}; }
@@ -269,8 +269,8 @@
   // Open on ?sem=N, else the current term's semester, else the first one with courses.
   function firstSemester() {
     const asked = Number(new URLSearchParams(location.search).get('sem'));
-    if (Number.isInteger(asked) && asked >= 0 && asked < SEMESTERS && new URLSearchParams(location.search).has('sem')) return asked;
-    const now = Array.from({ length: SEMESTERS }, (_, i) => i).find((i) => semesterTerm(i) === T.fall?.term);
+    if (Number.isInteger(asked) && asked >= 0 && asked < state.plan.length && new URLSearchParams(location.search).has('sem')) return asked;
+    const now = state.plan.map((_, i) => i).find((i) => semesterTerm(i) === T.fall?.term);
     if (now != null && state.plan[now].length) return now;
     const filled = state.plan.findIndex((s) => s.length);
     return filled >= 0 ? filled : 0;
