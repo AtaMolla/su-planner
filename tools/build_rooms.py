@@ -1,7 +1,8 @@
 """Write data/rooms.js: every room in FASS, FENS, SBS and UC with its type, seats and equipment.
 
 Usage:
-    python tools/build_rooms.py
+    python tools/build_rooms.py            fetch the room list again
+    python tools/build_rooms.py --filter   only re-apply the teaching-room filter to data/rooms.js
 
 Reads SU's public room search (suis.sabanciuniv.edu/HbbmInst/SABANCI_ROOMS.main_request):
   - POST sabanci_rooms.p_response with buildings=FASS,FENS,FMAN,UC lists the rooms
@@ -9,12 +10,16 @@ Reads SU's public room search (suis.sabanciuniv.edu/HbbmInst/SABANCI_ROOMS.main_
   - GET sabanci_rooms.R_ATTRIBUTE?b_code=..&r_code=.. lists one room's equipment.
 When a room is busy comes from the class times in data/courses.js and data/schedule-*.js,
 so this file only holds what the rooms are.
+
+Only teaching rooms are kept: rooms that are not for classes (gallery, lobby, stands) and
+rooms with fewer than MIN_SEATS seats are dropped and listed under "removed".
 """
 import datetime
 import html
 import json
 import pathlib
 import re
+import sys
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -28,6 +33,32 @@ NAMES = {
     "SBS": "Sabancı Business School",
     "UC": "University Center",
 }
+# Not for teaching: FASS gallery, UC lobby, the stand in front of UC.
+NOT_TEACHING = {"FASS G028", "UC G039", "UC GOUT-S7"}
+MIN_SEATS = 19  # rooms with 18 seats or fewer are dropped
+
+
+def keep(b, code, type_, seats):
+    return f"{b} {code}" not in NOT_TEACHING and type_ != "Stand" and seats >= MIN_SEATS
+
+
+def write(out):
+    path = ROOT / "data" / "rooms.js"
+    path.write_text("window.ROOM_DATA = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n",
+                    encoding="utf-8")
+    print(f"{path}: {len(out['rooms'])} rooms kept, {len(out['removed'])} removed")
+
+
+def filter_existing():
+    """Re-apply keep() to the current data/rooms.js without fetching anything."""
+    path = ROOT / "data" / "rooms.js"
+    text = path.read_text(encoding="utf-8")
+    out = json.loads(text[text.index("=") + 1:].strip().rstrip(";"))
+    removed = set(out.get("removed", []))
+    removed |= {f"{r[0]} {r[1]}" for r in out["rooms"] if not keep(r[0], r[1], r[3], r[4])}
+    out["rooms"] = [r for r in out["rooms"] if keep(r[0], r[1], r[3], r[4])]
+    out["removed"] = sorted(removed)
+    write(out)
 
 
 def get(url, data=None):
@@ -69,7 +100,12 @@ def attributes(room):
 
 
 def main():
+    if "--filter" in sys.argv:
+        filter_existing()
+        return
     rooms = room_list()
+    removed = sorted(f"{r['b']} {r['code']}" for r in rooms if not keep(r["b"], r["code"], r["type"], r["seats"]))
+    rooms = [r for r in rooms if keep(r["b"], r["code"], r["type"], r["seats"])]
     with ThreadPoolExecutor(4) as pool:
         for room, attrs in zip(rooms, pool.map(attributes, rooms)):
             room["attrs"] = attrs
@@ -81,11 +117,10 @@ def main():
         # [building, room code, name, type, seats, [attribute indexes]]
         "rooms": [[r["b"], r["code"], r["name"], r["type"], r["seats"], [names.index(a) for a in r["attrs"]]]
                   for r in sorted(rooms, key=lambda r: (r["b"], r["code"]))],
+        # rooms left out on purpose (see keep); pages skip classes held there
+        "removed": removed,
     }
-    path = ROOT / "data" / "rooms.js"
-    path.write_text("window.ROOM_DATA = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n",
-                    encoding="utf-8")
-    print(f"{path}: {len(rooms)} rooms, {len(names)} attributes")
+    write(out)
 
 
 if __name__ == "__main__":
